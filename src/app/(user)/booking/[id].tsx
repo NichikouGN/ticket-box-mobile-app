@@ -1,25 +1,53 @@
-import React, { useState } from 'react';
-import { StyleSheet, Pressable, ScrollView, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, Pressable, ScrollView, View, ActivityIndicator, Alert } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useLocalSearchParams, useRouter } from 'expo-router';
+import { concertService } from '@/services/concert';
+import { orderService } from '@/services/order';
+import { TicketType } from '@/types/concert';
 
-// Dummy ticket types for testing Phase 1
-const DUMMY_TICKET_TYPES = [
-  { id: 't1', name: 'SVIP', price: 3500000, max_per_user: 2, available_seats: 145 },
-  { id: 't2', name: 'GA', price: 800000, max_per_user: 4, available_seats: 2301 }
-];
+// Zero-dependency client-side UUIDv4 generator
+const generateUUID = () => {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+};
 
 export default function BookingScreen() {
-  const { id: _concertId } = useLocalSearchParams<{ id: string }>();
+  const { id: concertId } = useLocalSearchParams<{ id: string }>();
   const router = useRouter();
+  const [ticketTypes, setTicketTypes] = useState<TicketType[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [booking, setBooking] = useState(false);
   const [quantities, setQuantities] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    const fetchTickets = async () => {
+      if (!concertId) return;
+      setLoading(true);
+      try {
+        const response = await concertService.getConcertTickets(concertId);
+        setTicketTypes(response.ticketTypes);
+      } catch (error) {
+        console.error('Failed to load tickets', error);
+        Alert.alert('Lỗi', 'Không thể tải danh sách loại vé.');
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchTickets();
+  }, [concertId]);
 
   const handleIncrement = (ticketTypeId: string, max: number) => {
     const current = quantities[ticketTypeId] || 0;
     if (current < max) {
       setQuantities({ ...quantities, [ticketTypeId]: current + 1 });
+    } else {
+      Alert.alert('Giới hạn', `Bạn chỉ được mua tối đa ${max} vé cho hạng vé này.`);
     }
   };
 
@@ -31,21 +59,52 @@ export default function BookingScreen() {
   };
 
   const calculateTotal = () => {
-    return DUMMY_TICKET_TYPES.reduce((sum, item) => {
+    return ticketTypes.reduce((sum, item) => {
       const quantity = quantities[item.id] || 0;
       return sum + quantity * item.price;
     }, 0);
   };
 
-  const handleBook = () => {
-    const hasTickets = Object.values(quantities).some(q => q > 0);
-    if (!hasTickets) return;
+  const handleBook = async () => {
+    const orderItems = ticketTypes
+      .map((item) => ({
+        concertId: concertId as string,
+        ticketTypeId: item.id,
+        quantity: quantities[item.id] || 0,
+      }))
+      .filter((item) => item.quantity > 0);
 
-    // Phase 4 will call /api/v1/orders with Idempotency-Key
-    // Let's generate a mock orderId
-    const mockOrderId = '8b2c6e3c-fa52-474c-83b0-0b6c62bb1e89';
-    router.push(`/(user)/payment/${mockOrderId}`);
+    if (orderItems.length === 0) {
+      Alert.alert('Thông báo', 'Vui lòng chọn ít nhất một vé.');
+      return;
+    }
+
+    setBooking(true);
+    try {
+      const idempotencyKey = generateUUID();
+      const response = await orderService.createOrder(orderItems, idempotencyKey);
+      
+      if (response.success && response.orderId) {
+        router.push(`/(user)/payment/${response.orderId}`);
+      } else {
+        Alert.alert('Đặt Vé Thất Bại', response.message || 'Yêu cầu của bạn không thể xử lý.');
+      }
+    } catch (error: any) {
+      console.error(error);
+      const errorMsg = error.response?.data?.message || 'Có lỗi xảy ra trong quá trình đặt giữ vé. Vui lòng thử lại.';
+      Alert.alert('Lỗi đặt vé', errorMsg);
+    } finally {
+      setBooking(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <ThemedView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color="#000" />
+      </ThemedView>
+    );
+  }
 
   return (
     <ScrollView style={styles.scrollView}>
@@ -53,17 +112,17 @@ export default function BookingScreen() {
         <ThemedText type="subtitle">Chọn Loại Vé</ThemedText>
 
         <ThemedView style={styles.ticketTypesList}>
-          {DUMMY_TICKET_TYPES.map((item) => {
+          {ticketTypes.map((item) => {
             const qty = quantities[item.id] || 0;
             return (
               <ThemedView key={item.id} type="backgroundElement" style={styles.ticketCard}>
-                <View>
+                <View style={styles.ticketInfoContainer}>
                   <ThemedText style={styles.ticketName}>{item.name}</ThemedText>
                   <ThemedText style={styles.ticketPrice}>
                     {item.price.toLocaleString('vi-VN')} VNĐ
                   </ThemedText>
                   <ThemedText style={styles.ticketInfo} themeColor="textSecondary">
-                    Còn lại: {item.available_seats} | Tối đa: {item.max_per_user}
+                    Còn lại: {item.availableSeats} | Giới hạn: {item.maxPerUser}
                   </ThemedText>
                 </View>
 
@@ -72,7 +131,7 @@ export default function BookingScreen() {
                     <ThemedText style={styles.counterButtonText}>-</ThemedText>
                   </Pressable>
                   <ThemedText style={styles.counterValue}>{qty}</ThemedText>
-                  <Pressable onPress={() => handleIncrement(item.id, item.max_per_user)} style={styles.counterButton}>
+                  <Pressable onPress={() => handleIncrement(item.id, item.maxPerUser)} style={styles.counterButton}>
                     <ThemedText style={styles.counterButtonText}>+</ThemedText>
                   </Pressable>
                 </View>
@@ -85,14 +144,18 @@ export default function BookingScreen() {
           <ThemedText type="subtitle">Tổng Tiền: {calculateTotal().toLocaleString('vi-VN')} VNĐ</ThemedText>
           <Pressable
             onPress={handleBook}
-            disabled={calculateTotal() === 0}
+            disabled={booking || calculateTotal() === 0}
             style={({ pressed }) => [
               styles.bookButton,
-              calculateTotal() === 0 && styles.bookButtonDisabled,
+              (booking || calculateTotal() === 0) && styles.bookButtonDisabled,
               pressed && styles.bookButtonPressed,
             ]}
           >
-            <ThemedText style={styles.bookButtonText}>Tiến Hành Đặt Chỗ</ThemedText>
+            {booking ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <ThemedText style={styles.bookButtonText}>Tiến Hành Đặt Chỗ</ThemedText>
+            )}
           </Pressable>
         </ThemedView>
       </ThemedView>
@@ -103,6 +166,11 @@ export default function BookingScreen() {
 const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
   },
   container: {
     padding: Spacing.four,
@@ -117,6 +185,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     padding: Spacing.three,
     borderRadius: Spacing.two,
+  },
+  ticketInfoContainer: {
+    flex: 1,
+    marginRight: Spacing.two,
   },
   ticketName: {
     fontSize: 16,
@@ -148,6 +220,7 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 18,
+    textAlign: 'center',
   },
   counterValue: {
     fontSize: 16,
