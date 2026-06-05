@@ -1,36 +1,70 @@
-import React from 'react';
-import { StyleSheet, FlatList, Pressable, Image } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, FlatList, Pressable, Image, ActivityIndicator, TextInput, View } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useRouter } from 'expo-router';
-
-// Dummy data for testing Phase 1
-const DUMMY_CONCERTS = [
-  {
-    id: 'c3b07384-d113-4e31-92f7-e43598d9e2d3',
-    title: 'Anh Trai Say Hi - Đêm Đỉnh Cao',
-    artists: ['HIEUTHUHAI', 'Rhyder', 'Captain'],
-    venue: 'Sân vận động Quân khu 7, TP.HCM',
-    start_time: '2026-07-15T19:00:00Z',
-    status: 'UPCOMING',
-    thumbnail_url: 'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=500',
-  },
-  {
-    id: 'concert-2',
-    title: 'Chị Đẹp Đạp Gió Rẽ Sóng 2026',
-    artists: ['Mỹ Linh', 'Thu Phương', 'Lệ Quyên'],
-    venue: 'Sân vận động Mỹ Đình, Hà Nội',
-    start_time: '2026-08-20T18:30:00Z',
-    status: 'UPCOMING',
-    thumbnail_url: 'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=500',
-  }
-];
+import { concertService } from '@/services/concert';
+import { Concert } from '@/types/concert';
 
 export default function ConcertListScreen() {
   const router = useRouter();
+  const [concerts, setConcerts] = useState<Concert[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  const renderItem = ({ item }: { item: typeof DUMMY_CONCERTS[0] }) => (
+  const fetchConcerts = async (pageNum: number, isRefresh = false) => {
+    if (pageNum === 1) {
+      if (isRefresh) setRefreshing(true);
+    } else {
+      setLoadingMore(true);
+    }
+
+    try {
+      const response = await concertService.getConcerts(pageNum, 10);
+      if (response.success) {
+        if (pageNum === 1) {
+          setConcerts(response.data);
+        } else {
+          setConcerts((prev) => [...prev, ...response.data]);
+        }
+        setPage(response.pagination.currentPage);
+        setTotalPages(response.pagination.totalPage);
+      }
+    } catch (error) {
+      console.error('Failed to load concerts', error);
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+      setLoadingMore(false);
+    }
+  };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchConcerts(1);
+  }, []);
+
+  const handleRefresh = () => {
+    fetchConcerts(1, true);
+  };
+
+  const handleLoadMore = () => {
+    if (page < totalPages && !loadingMore && !loading) {
+      fetchConcerts(page + 1);
+    }
+  };
+
+  const filteredConcerts = concerts.filter((c) =>
+    c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    c.artists.some((artist) => artist.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
+  const renderItem = ({ item }: { item: Concert }) => (
     <Pressable
       onPress={() => router.push(`/(user)/concert/${item.id}`)}
       style={({ pressed }) => [
@@ -38,7 +72,11 @@ export default function ConcertListScreen() {
         pressed && styles.cardPressed,
       ]}
     >
-      <Image source={{ uri: item.thumbnail_url }} style={styles.thumbnail} />
+      {item.thumbnailUrl ? (
+        <Image source={{ uri: item.thumbnailUrl }} style={styles.thumbnail} />
+      ) : (
+        <View style={styles.thumbnailPlaceholder} />
+      )}
       <ThemedView style={styles.cardInfo}>
         <ThemedText type="subtitle" style={styles.cardTitle}>{item.title}</ThemedText>
         <ThemedText style={styles.artists} themeColor="textSecondary">
@@ -48,7 +86,7 @@ export default function ConcertListScreen() {
           📍 {item.venue}
         </ThemedText>
         <ThemedText style={styles.time} themeColor="textSecondary">
-          📅 {new Date(item.start_time).toLocaleString('vi-VN')}
+          📅 {new Date(item.startTime).toLocaleString('vi-VN')}
         </ThemedText>
       </ThemedView>
     </Pressable>
@@ -56,15 +94,44 @@ export default function ConcertListScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      <FlatList
-        data={DUMMY_CONCERTS}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={styles.listContent}
-        ListHeaderComponent={
-          <ThemedText type="title" style={styles.headerTitle}>Sự Kiện Sắp Diễn Ra</ThemedText>
-        }
-      />
+      <View style={styles.searchContainer}>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Tìm kiếm sự kiện, nghệ sĩ..."
+          placeholderTextColor="#888"
+          value={searchQuery}
+          onChangeText={setSearchQuery}
+        />
+      </View>
+
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#000" />
+        </View>
+      ) : (
+        <FlatList
+          data={filteredConcerts}
+          keyExtractor={(item) => item.id}
+          renderItem={renderItem}
+          contentContainerStyle={styles.listContent}
+          onRefresh={handleRefresh}
+          refreshing={refreshing}
+          onEndReached={handleLoadMore}
+          onEndReachedThreshold={0.5}
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <ThemedText themeColor="textSecondary">Không tìm thấy sự kiện nào.</ThemedText>
+            </View>
+          }
+          ListFooterComponent={
+            loadingMore ? (
+              <View style={styles.footerLoader}>
+                <ActivityIndicator size="small" color="#000" />
+              </View>
+            ) : null
+          }
+        />
+      )}
     </ThemedView>
   );
 }
@@ -73,12 +140,23 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
   },
+  searchContainer: {
+    paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.three,
+    paddingBottom: Spacing.two,
+  },
+  searchInput: {
+    height: 44,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    backgroundColor: '#fff',
+    color: '#000',
+  },
   listContent: {
     padding: Spacing.four,
     gap: Spacing.four,
-  },
-  headerTitle: {
-    marginBottom: Spacing.three,
   },
   card: {
     borderRadius: Spacing.three,
@@ -93,6 +171,11 @@ const styles = StyleSheet.create({
   thumbnail: {
     width: '100%',
     height: 180,
+  },
+  thumbnailPlaceholder: {
+    width: '100%',
+    height: 180,
+    backgroundColor: '#ccc',
   },
   cardInfo: {
     padding: Spacing.three,
@@ -112,5 +195,18 @@ const styles = StyleSheet.create({
   },
   time: {
     fontSize: 13,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyContainer: {
+    paddingVertical: Spacing.six,
+    alignItems: 'center',
+  },
+  footerLoader: {
+    paddingVertical: Spacing.two,
+    alignItems: 'center',
   },
 });
