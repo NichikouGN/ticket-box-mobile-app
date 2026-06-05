@@ -25,7 +25,17 @@ const mockAdapter: AxiosAdapter = async (config) => {
           }
         }
 
-        const relativeUrl = config.url ? config.url.replace(config.baseURL || '', '') : '';
+        let relativeUrl = config.url || '';
+        if (relativeUrl.startsWith('http://') || relativeUrl.startsWith('https://')) {
+          const parts = relativeUrl.split('/');
+          relativeUrl = '/' + parts.slice(3).join('/');
+        } else {
+          if (relativeUrl && !relativeUrl.startsWith('/')) {
+            relativeUrl = '/' + relativeUrl;
+          }
+        }
+        
+        console.log(`[Mock Adapter] Intercepted: [${(config.method || 'GET').toUpperCase()}] ${config.url} -> Path: ${relativeUrl}`);
         const { status, data } = await handleMockRequest(relativeUrl, config.method || 'GET', parsedData);
         
         if (status >= 200 && status < 300) {

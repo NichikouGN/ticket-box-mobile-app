@@ -501,5 +501,11 @@ export const handleMockRequest = async (url: string, method: string, body?: any)
     };
   }
 
-  return { status: 404, data: { success: false, message: 'API Route Mock Not Found' } };
+  return { 
+    status: 404, 
+    data: { 
+      success: false, 
+      message: `API Route Mock Not Found: [${method.toUpperCase()}] ${path}` 
+    } 
+  };
 };
