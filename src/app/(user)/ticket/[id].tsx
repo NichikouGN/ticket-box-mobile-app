@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { StyleSheet, ActivityIndicator, Alert, View, ScrollView } from 'react-native';
+import { StyleSheet, ActivityIndicator, Alert, View, ScrollView, Pressable } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
@@ -9,6 +9,7 @@ import { Ticket } from '@/types/ticket';
 import { useTheme } from '@/hooks/use-theme';
 import CryptoJS from 'crypto-js';
 import QRCode from 'react-native-qrcode-svg';
+import * as Clipboard from 'expo-clipboard';
 
 export default function TicketDetailScreen() {
   const { id: ticketId } = useLocalSearchParams<{ id: string }>();
@@ -109,6 +110,20 @@ export default function TicketDetailScreen() {
             <ThemedText style={styles.qrHint} themeColor="textSecondary">
               Quét mã này tại cổng soát vé để vào sự kiện
             </ThemedText>
+            {qrRaw && (
+              <Pressable
+                onPress={async () => {
+                  await Clipboard.setStringAsync(qrRaw);
+                  Alert.alert('Đã Sao Chép', 'Đã sao chép raw QR token để test check-in.');
+                }}
+                style={({ pressed }) => [
+                  styles.copyDevButton,
+                  pressed && styles.copyDevButtonPressed,
+                ]}
+              >
+                <ThemedText style={styles.copyDevButtonText}>📋 Sao chép Raw QR (Dev Test)</ThemedText>
+              </Pressable>
+            )}
           </View>
 
           {/* Ticket Information */}
@@ -281,5 +296,20 @@ const styles = StyleSheet.create({
     height: 1,
     backgroundColor: 'rgba(0,0,0,0.06)',
     marginVertical: Spacing.two,
+  },
+  copyDevButton: {
+    marginTop: Spacing.three,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.four,
+    backgroundColor: '#3c87f7',
+    borderRadius: Spacing.two,
+  },
+  copyDevButtonPressed: {
+    opacity: 0.8,
+  },
+  copyDevButtonText: {
+    color: '#ffffff',
+    fontSize: 13,
+    fontWeight: 'bold',
   },
 });

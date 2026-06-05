@@ -1,128 +1,327 @@
-import React, { useState } from 'react';
-import { StyleSheet, Pressable, TextInput, Alert, View } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { StyleSheet, Pressable, TextInput, ActivityIndicator, View, FlatList, ScrollView } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useRouter } from 'expo-router';
 import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as Crypto from 'expo-crypto';
+import { concertService } from '@/services/concert';
+import { checkinService } from '@/services/checkin';
+import { Concert } from '@/types/concert';
+import { CheckinResult } from '@/types/checkin';
+import { useTheme } from '@/hooks/use-theme';
 
 export default function ScannerScreen() {
   const router = useRouter();
+  const theme = useTheme();
   const [permission, requestPermission] = useCameraPermissions();
+  const [concerts, setConcerts] = useState<Concert[]>([]);
+  const [loadingConcerts, setLoadingConcerts] = useState(true);
+  const [selectedConcert, setSelectedConcert] = useState<{ id: string; title: string } | null>(null);
+
   const [manualInput, setManualInput] = useState('');
   const [scanning, setScanning] = useState(true);
+  const [verifying, setVerifying] = useState(false);
+  const [scanResult, setScanResult] = useState<CheckinResult | null>(null);
+
+  // Load concerts on mount for staff selection
+  useEffect(() => {
+    const fetchConcerts = async () => {
+      try {
+        const response = await concertService.getConcerts(1, 50);
+        setConcerts(response.data);
+      } catch (error) {
+        console.error('Failed to load concerts for check-in selection', error);
+      } finally {
+        setLoadingConcerts(false);
+      }
+    };
+    fetchConcerts();
+  }, []);
 
   if (!permission) {
-    // Camera permissions are still loading.
     return (
-      <ThemedView style={styles.container}>
-        <ThemedText>Đang tải quyền camera...</ThemedText>
+      <ThemedView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={theme.text} />
+        <ThemedText style={{ marginTop: Spacing.two }}>Đang tải quyền camera...</ThemedText>
       </ThemedView>
     );
   }
 
   if (!permission.granted) {
-    // Camera permissions are not granted yet.
     return (
-      <ThemedView style={styles.container}>
-        <ThemedText style={styles.message}>Chúng tôi cần quyền truy cập camera để quét vé</ThemedText>
-        <Pressable onPress={requestPermission} style={styles.button}>
-          <ThemedText style={styles.buttonText}>Cấp Quyền Camera</ThemedText>
+      <ThemedView style={styles.permissionContainer}>
+        <ThemedText style={styles.permissionMessage}>
+          Nhân viên soát vé cần cấp quyền truy cập camera để quét mã QR vé của khách hàng.
+        </ThemedText>
+        <Pressable onPress={requestPermission} style={styles.permissionButton}>
+          <ThemedText style={styles.permissionButtonText}>Cấp Quyền Camera</ThemedText>
         </Pressable>
       </ThemedView>
     );
   }
 
-  // Handle scanned QR code
+  // Luồng chọn Concert đầu tiên
+  if (!selectedConcert) {
+    return (
+      <ThemedView style={styles.concertSelectionContainer}>
+        <ThemedText type="subtitle" style={styles.selectionTitle}>Chọn Sự Kiện Soát Vé</ThemedText>
+        <ThemedText style={styles.selectionSubtitle} themeColor="textSecondary">
+          Vui lòng chọn sự kiện mà bạn đang được phân công trực soát vé tại cổng.
+        </ThemedText>
+
+        {loadingConcerts ? (
+          <ActivityIndicator size="large" color={theme.text} style={{ marginTop: Spacing.six }} />
+        ) : (
+          <FlatList
+            data={concerts}
+            keyExtractor={(item) => item.id}
+            contentContainerStyle={styles.concertListContent}
+            renderItem={({ item }) => (
+              <Pressable
+                onPress={() => setSelectedConcert({ id: item.id, title: item.title })}
+                style={({ pressed }) => [
+                  styles.concertCard,
+                  { backgroundColor: theme.backgroundElement, borderColor: theme.backgroundSelected },
+                  pressed && styles.concertCardPressed
+                ]}
+              >
+                <ThemedText style={styles.concertCardTitle}>{item.title}</ThemedText>
+                <ThemedText style={styles.concertCardInfo} themeColor="textSecondary">📍 {item.venue}</ThemedText>
+                <ThemedText style={styles.concertCardInfo} themeColor="textSecondary">
+                  📅 {new Date(item.startTime).toLocaleDateString('vi-VN')}
+                </ThemedText>
+              </Pressable>
+            )}
+            ListEmptyComponent={
+              <ThemedView style={styles.emptyContainer}>
+                <ThemedText themeColor="textSecondary">Hiện tại không có sự kiện nào đang diễn ra.</ThemedText>
+              </ThemedView>
+            }
+          />
+        )}
+      </ThemedView>
+    );
+  }
+
+  // Xử lý quét mã QR thành công từ Camera
   const handleBarcodeScanned = ({ data }: { data: string }) => {
-    if (!scanning) return;
+    if (!scanning || verifying || scanResult) return;
     setScanning(false);
     processQR(data);
   };
 
-  const processQR = (qrRaw: string) => {
-    // Phase 6 will hash local qrRaw with SHA-256 and POST to server.
-    // For now, let's show an alert simulation:
-    Alert.alert(
-      'Verify Ticket',
-      `QR Scanned: ${qrRaw}\n(Mã hóa SHA-256 sẽ được tích hợp ở Phase 6)`,
-      [
-        {
-          text: 'OK',
-          onPress: () => setScanning(true),
-        },
-      ]
-    );
-  };
+  // Logic băm SHA-256 và gọi API Verify
+  const processQR = async (qrRaw: string) => {
+    setVerifying(true);
+    try {
+      // Băm một chiều bằng SHA-256 trên thiết bị
+      const qrSha256 = await Crypto.digestStringAsync(
+        Crypto.CryptoDigestAlgorithm.SHA256,
+        qrRaw
+      );
 
-  const handleMockScan = () => {
-    const mockQRList = [
-      'cc29ba9cc390cf2da5526261541eb618ee3d6c4ef1d780e9351904b25509bf16',
-      'invalid-ticket-token-12345',
-      'ticket-already-used-98765',
-    ];
-    const randomIndex = Math.floor(Math.random() * mockQRList.length);
-    processQR(mockQRList[randomIndex]);
+      // Gọi API Verify trực tiếp lên server
+      const result = await checkinService.verifyQR(qrSha256, selectedConcert.id);
+      setScanResult(result);
+    } catch (error: any) {
+      console.error('Failed to verify QR', error);
+      // Giả lập Offline hay Lỗi kết nối
+      const errorMsg = error.response?.data?.message || 'Không thể kết nối đến máy chủ soát vé.';
+      setScanResult({
+        success: false,
+        result: 'INVALID',
+        message: `Lỗi kết nối: ${errorMsg}`,
+      });
+    } finally {
+      setVerifying(false);
+    }
   };
 
   const handleManualSubmit = () => {
     if (!manualInput.trim()) return;
+    setScanning(false);
     processQR(manualInput.trim());
     setManualInput('');
   };
 
+  const handleMockScan = () => {
+    // Generates a mock token that will fail SHA-256 check on the backend
+    setScanning(false);
+    processQR('mock-qr-token-' + Math.random().toString(36).substring(7));
+  };
+
+  const resetScanner = () => {
+    setScanResult(null);
+    setScanning(true);
+  };
+
   return (
     <ThemedView style={styles.container}>
-      <CameraView
-        style={StyleSheet.absoluteFillObject}
-        facing="back"
-        onBarcodeScanned={handleBarcodeScanned}
-        barcodeScannerSettings={{
-          barcodeTypes: ['qr'],
-        }}
-      />
+      {/* Camera View */}
+      {scanning && !scanResult && !verifying && (
+        <CameraView
+          style={StyleSheet.absoluteFillObject}
+          facing="back"
+          onBarcodeScanned={handleBarcodeScanned}
+          barcodeScannerSettings={{
+            barcodeTypes: ['qr'],
+          }}
+        />
+      )}
+
+      {/* Camera target reticle overlay */}
+      {scanning && !scanResult && !verifying && (
+        <View style={styles.reticleContainer}>
+          <View style={styles.reticle} />
+          <ThemedText style={styles.reticleText}>Đưa mã QR của vé vào khung hình</ThemedText>
+        </View>
+      )}
 
       <View style={styles.overlayContainer}>
-        {/* Top bar with stats navigator */}
+        {/* Top Info Bar */}
         <ThemedView style={styles.topBar}>
+          <ThemedView style={styles.concertIndicator}>
+            <ThemedText style={styles.concertIndicatorLabel} numberOfLines={1}>
+              📌 {selectedConcert.title}
+            </ThemedText>
+            <Pressable onPress={() => setSelectedConcert(null)} style={styles.changeConcertBtn}>
+              <ThemedText style={styles.changeConcertText}>Đổi</ThemedText>
+            </Pressable>
+          </ThemedView>
+
           <Pressable
-            onPress={() => router.push('/(staff)/stats')}
+            onPress={() => router.push({
+              pathname: '/(staff)/stats',
+              params: { concertId: selectedConcert.id, concertTitle: selectedConcert.title }
+            })}
             style={styles.statsButton}
           >
-            <ThemedText style={styles.statsButtonText}>📊 Xem Thống Kê</ThemedText>
+            <ThemedText style={styles.statsButtonText}>📊 Thống Kê</ThemedText>
           </Pressable>
         </ThemedView>
 
-        {/* Bottom controls panel */}
-        <ThemedView type="backgroundElement" style={styles.controlPanel}>
-          <ThemedText style={styles.panelTitle}>Emulator Testing / Soát vé giả lập</ThemedText>
-          
-          <Pressable
-            onPress={handleMockScan}
-            style={({ pressed }) => [
-              styles.mockButton,
-              pressed && styles.buttonPressed,
+        {/* Verifying Loading Screen */}
+        {verifying && (
+          <View style={styles.loadingOverlay}>
+            <ActivityIndicator size="large" color="#ffffff" />
+            <ThemedText style={styles.loadingOverlayText}>Đang đối chiếu & xác thực vé...</ThemedText>
+          </View>
+        )}
+
+        {/* Dynamic Status Overlays */}
+        {scanResult && (
+          <View 
+            style={[
+              styles.resultOverlay,
+              scanResult.result === 'SUCCESS' && { backgroundColor: '#2e7d32' },
+              scanResult.result === 'ALREADY_USED' && { backgroundColor: '#c62828' },
+              scanResult.result === 'INVALID' && { backgroundColor: '#c62828' },
+              scanResult.result === 'WRONG_CONCERT' && { backgroundColor: '#ef6c00' },
             ]}
           >
-            <ThemedText style={styles.mockButtonText}>⚡ Quét Ngẫu Nhiên (Mock Scan)</ThemedText>
-          </Pressable>
+            <ScrollView contentContainerStyle={styles.resultScrollContent}>
+              <ThemedText style={styles.resultTitle}>
+                {scanResult.result === 'SUCCESS' && '✔️ VÉ HỢP LỆ'}
+                {scanResult.result === 'ALREADY_USED' && '❌ VÉ ĐÃ SỬ DỤNG'}
+                {scanResult.result === 'INVALID' && '❌ VÉ KHÔNG HỢP LỆ'}
+                {scanResult.result === 'WRONG_CONCERT' && '⚠️ VÉ SAI CONCERT'}
+              </ThemedText>
 
-          <ThemedView style={styles.divider} />
+              <View style={styles.resultCard}>
+                {scanResult.result === 'SUCCESS' && (
+                  <>
+                    <View style={styles.resultRow}>
+                      <ThemedText style={styles.resultLabel}>Khách hàng:</ThemedText>
+                      <ThemedText style={styles.resultValue}>{scanResult.holderName}</ThemedText>
+                    </View>
+                    <View style={styles.resultRow}>
+                      <ThemedText style={styles.resultLabel}>Hạng vé:</ThemedText>
+                      <ThemedText style={styles.resultValue}>{scanResult.ticketType}</ThemedText>
+                    </View>
+                    <View style={styles.resultRow}>
+                      <ThemedText style={styles.resultLabel}>Thời gian quét:</ThemedText>
+                      <ThemedText style={styles.resultValue}>
+                        {new Date(scanResult.checkedInAt || '').toLocaleTimeString('vi-VN')}
+                      </ThemedText>
+                    </View>
+                    <View style={styles.resultRow}>
+                      <ThemedText style={styles.resultLabel}>Mã vé:</ThemedText>
+                      <ThemedText style={[styles.resultValue, { fontSize: 11 }]} numberOfLines={1}>
+                        {scanResult.ticketId}
+                      </ThemedText>
+                    </View>
+                  </>
+                )}
 
-          <ThemedText style={styles.inputLabel}>Nhập mã vé thủ công:</ThemedText>
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.textInput}
-              placeholder="Nhập mã QR..."
-              placeholderTextColor="#888"
-              value={manualInput}
-              onChangeText={setManualInput}
-            />
-            <Pressable onPress={handleManualSubmit} style={styles.submitButton}>
-              <ThemedText style={styles.submitButtonText}>Gửi</ThemedText>
-            </Pressable>
+                {scanResult.result === 'ALREADY_USED' && (
+                  <>
+                    <ThemedText style={styles.errorDescription}>
+                      Cảnh báo! Vé này đã được quét và soát trước đó tại cổng.
+                    </ThemedText>
+                    <View style={styles.resultRow}>
+                      <ThemedText style={styles.resultLabel}>Đã quét lúc:</ThemedText>
+                      <ThemedText style={styles.resultValue}>
+                        {new Date(scanResult.usedAt || '').toLocaleTimeString('vi-VN')} ngày {new Date(scanResult.usedAt || '').toLocaleDateString('vi-VN')}
+                      </ThemedText>
+                    </View>
+                    <View style={styles.resultRow}>
+                      <ThemedText style={styles.resultLabel}>Soát vé bởi:</ThemedText>
+                      <ThemedText style={styles.resultValue}>{scanResult.usedByStaff || 'N/A'}</ThemedText>
+                    </View>
+                  </>
+                )}
+
+                {scanResult.result === 'INVALID' && (
+                  <ThemedText style={styles.errorDescription}>
+                    {scanResult.message || 'Mã QR này không tồn tại trong cơ sở dữ liệu hệ thống TicketBox.'}
+                  </ThemedText>
+                )}
+
+                {scanResult.result === 'WRONG_CONCERT' && (
+                  <ThemedText style={styles.errorDescription}>
+                    {scanResult.message || 'Vé này hợp lệ nhưng được phát hành cho một concert hoặc sự kiện khác.'}
+                  </ThemedText>
+                )}
+              </View>
+
+              <Pressable onPress={resetScanner} style={styles.continueButton}>
+                <ThemedText style={styles.continueButtonText}>TIẾP TỤC QUÉT VÉ</ThemedText>
+              </Pressable>
+            </ScrollView>
           </View>
-        </ThemedView>
+        )}
+
+        {/* Emulator Testing panel (shown when camera is active) */}
+        {scanning && !scanResult && !verifying && (
+          <ThemedView type="backgroundElement" style={styles.controlPanel}>
+            <ThemedText style={styles.panelTitle}>Emulator Support / Giả lập soát vé</ThemedText>
+            
+            <Pressable
+              onPress={handleMockScan}
+              style={({ pressed }) => [
+                styles.mockButton,
+                pressed && styles.buttonPressed,
+              ]}
+            >
+              <ThemedText style={styles.mockButtonText}>⚡ Quét vé lỗi ngẫu nhiên (Mock Scan)</ThemedText>
+            </Pressable>
+
+            <View style={styles.inputContainer}>
+              <TextInput
+                style={[styles.textInput, { borderColor: theme.backgroundSelected, backgroundColor: theme.background, color: theme.text }]}
+                placeholder="Dán mã QR raw tại đây để test..."
+                placeholderTextColor="#888"
+                value={manualInput}
+                onChangeText={setManualInput}
+              />
+              <Pressable onPress={handleManualSubmit} style={styles.submitButton}>
+                <ThemedText style={styles.submitButtonText}>Quét</ThemedText>
+              </Pressable>
+            </View>
+          </ThemedView>
+        )}
       </View>
     </ThemedView>
   );
@@ -134,18 +333,95 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  message: {
-    textAlign: 'center',
-    paddingBottom: Spacing.four,
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.four,
   },
-  button: {
-    padding: Spacing.three,
+  permissionContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.five,
+    gap: Spacing.four,
+  },
+  permissionMessage: {
+    textAlign: 'center',
+    fontSize: 15.5,
+    lineHeight: 24,
+  },
+  permissionButton: {
+    paddingVertical: Spacing.three,
+    paddingHorizontal: Spacing.five,
     backgroundColor: '#000',
     borderRadius: Spacing.two,
   },
-  buttonText: {
+  permissionButtonText: {
     color: '#fff',
     fontWeight: 'bold',
+  },
+  concertSelectionContainer: {
+    flex: 1,
+    paddingHorizontal: Spacing.four,
+    paddingTop: Spacing.five,
+  },
+  selectionTitle: {
+    fontWeight: 'bold',
+    marginBottom: Spacing.one,
+  },
+  selectionSubtitle: {
+    fontSize: 14,
+    marginBottom: Spacing.four,
+  },
+  concertListContent: {
+    gap: Spacing.three,
+    paddingBottom: Spacing.five,
+  },
+  concertCard: {
+    padding: Spacing.three,
+    borderRadius: Spacing.two,
+    borderWidth: 1,
+  },
+  concertCardPressed: {
+    opacity: 0.8,
+  },
+  concertCardTitle: {
+    fontSize: 16,
+    fontWeight: 'bold',
+    marginBottom: Spacing.one,
+  },
+  concertCardInfo: {
+    fontSize: 12.5,
+    marginTop: Spacing.half,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    paddingVertical: Spacing.six,
+    backgroundColor: 'transparent',
+  },
+  reticleContainer: {
+    position: 'absolute',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.three,
+    backgroundColor: 'transparent',
+  },
+  reticle: {
+    width: 250,
+    height: 250,
+    borderWidth: 3,
+    borderColor: '#43a047',
+    borderRadius: Spacing.two,
+    backgroundColor: 'transparent',
+  },
+  reticleText: {
+    color: '#fff',
+    fontSize: 14,
+    fontWeight: 'bold',
+    textShadowColor: 'rgba(0,0,0,0.8)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
   },
   overlayContainer: {
     ...StyleSheet.absoluteFillObject,
@@ -154,9 +430,38 @@ const styles = StyleSheet.create({
   },
   topBar: {
     flexDirection: 'row',
-    justifyContent: 'flex-end',
+    justifyContent: 'space-between',
+    alignItems: 'center',
     padding: Spacing.three,
     backgroundColor: 'transparent',
+  },
+  concertIndicator: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0,0,0,0.7)',
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
+    borderRadius: Spacing.two,
+    marginRight: Spacing.two,
+    gap: Spacing.two,
+  },
+  concertIndicatorLabel: {
+    flex: 1,
+    color: '#fff',
+    fontSize: 12.5,
+    fontWeight: 'bold',
+  },
+  changeConcertBtn: {
+    paddingVertical: 2,
+    paddingHorizontal: Spacing.two,
+    backgroundColor: '#fff',
+    borderRadius: 4,
+  },
+  changeConcertText: {
+    fontSize: 10,
+    fontWeight: 'bold',
+    color: '#000',
   },
   statsButton: {
     paddingVertical: Spacing.two,
@@ -167,56 +472,134 @@ const styles = StyleSheet.create({
   statsButtonText: {
     color: '#fff',
     fontWeight: 'bold',
-    fontSize: 13,
+    fontSize: 12.5,
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.8)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: Spacing.three,
+  },
+  loadingOverlayText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 15,
+  },
+  resultOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    padding: Spacing.five,
+    justifyContent: 'center',
+  },
+  resultScrollContent: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: Spacing.four,
+  },
+  resultTitle: {
+    fontSize: 26,
+    fontWeight: '900',
+    color: '#fff',
+    textAlign: 'center',
+    letterSpacing: 1,
+    textShadowColor: 'rgba(0,0,0,0.2)',
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 4,
+  },
+  resultCard: {
+    backgroundColor: '#fff',
+    width: '100%',
+    padding: Spacing.four,
+    borderRadius: Spacing.three,
+    gap: Spacing.three,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 15,
+    elevation: 8,
+  },
+  resultRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    borderBottomWidth: 0.5,
+    borderBottomColor: '#eee',
+    paddingBottom: Spacing.two,
+  },
+  resultLabel: {
+    fontSize: 13.5,
+    color: '#555',
+    fontWeight: 'bold',
+  },
+  resultValue: {
+    fontSize: 14.5,
+    color: '#111',
+    fontWeight: 'bold',
+    textAlign: 'right',
+  },
+  errorDescription: {
+    fontSize: 15,
+    color: '#222',
+    lineHeight: 22,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
+  continueButton: {
+    width: '100%',
+    height: 52,
+    backgroundColor: '#fff',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: Spacing.three,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 5,
+    elevation: 4,
+  },
+  continueButtonText: {
+    color: '#000',
+    fontWeight: '900',
+    fontSize: 16,
+    letterSpacing: 0.5,
   },
   controlPanel: {
     padding: Spacing.four,
     borderTopLeftRadius: Spacing.three,
     borderTopRightRadius: Spacing.three,
     gap: Spacing.two,
-    backgroundColor: 'rgba(255,255,255,0.95)',
   },
   panelTitle: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: 'bold',
     textAlign: 'center',
     marginBottom: Spacing.one,
-    color: '#333',
   },
   mockButton: {
-    height: 44,
-    backgroundColor: '#43a047',
+    height: 40,
+    backgroundColor: '#ffb300',
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: Spacing.two,
   },
   mockButtonText: {
-    color: '#fff',
+    color: '#000',
     fontWeight: 'bold',
-  },
-  divider: {
-    height: 1,
-    backgroundColor: '#ddd',
-    marginVertical: Spacing.two,
-  },
-  inputLabel: {
-    fontSize: 12,
-    fontWeight: 'bold',
-    color: '#555',
+    fontSize: 13,
   },
   inputContainer: {
     flexDirection: 'row',
     gap: Spacing.two,
+    marginTop: Spacing.one,
   },
   textInput: {
     flex: 1,
     height: 40,
     borderWidth: 1,
-    borderColor: '#ccc',
     borderRadius: Spacing.two,
     paddingHorizontal: Spacing.two,
-    backgroundColor: '#fff',
-    color: '#000',
+    fontSize: 13,
   },
   submitButton: {
     width: 60,
