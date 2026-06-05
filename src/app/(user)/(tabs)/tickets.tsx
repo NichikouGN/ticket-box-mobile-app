@@ -1,47 +1,97 @@
-import React from 'react';
-import { StyleSheet, FlatList, Pressable } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { StyleSheet, FlatList, Pressable, ActivityIndicator, Alert } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
-
-const DUMMY_TICKETS = [
-  {
-    ticket_id: 'tkt-uuid-1',
-    concert_title: 'Anh Trai Say Hi - Đêm Đỉnh Cao',
-    event_date: '2026-07-15T18:00:00Z',
-    venue: 'Sân vận động Quân khu 7, TP.HCM',
-    ticket_type: 'VIP',
-    holder_name: 'Nguyễn Văn A',
-    used: false,
-  }
-];
+import { useFocusEffect, useRouter } from 'expo-router';
+import { ticketService } from '@/services/ticket';
+import { Ticket } from '@/types/ticket';
+import { useTheme } from '@/hooks/use-theme';
 
 export default function MyTicketsScreen() {
-  const renderItem = ({ item }: { item: typeof DUMMY_TICKETS[0] }) => (
-    <Pressable style={styles.ticketCard}>
-      <ThemedView style={styles.ticketHeader}>
-        <ThemedText style={styles.ticketType}>{item.ticket_type}</ThemedText>
+  const router = useRouter();
+  const theme = useTheme();
+  const [tickets, setTickets] = useState<Ticket[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchTickets = async () => {
+    try {
+      const data = await ticketService.getTickets();
+      setTickets(data);
+    } catch (error) {
+      console.error('Failed to fetch tickets', error);
+      Alert.alert('Lỗi', 'Không thể tải danh sách vé của bạn.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchTickets();
+    }, [])
+  );
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await fetchTickets();
+    setRefreshing(false);
+  };
+
+  const renderItem = ({ item }: { item: Ticket }) => (
+    <Pressable
+      onPress={() => router.push(`/(user)/ticket/${item.ticketId}`)}
+      style={({ pressed }) => [
+        styles.ticketCard,
+        { 
+          backgroundColor: theme.backgroundElement,
+          borderColor: theme.backgroundSelected,
+        },
+        pressed && styles.ticketCardPressed,
+      ]}
+    >
+      <ThemedView type="backgroundSelected" style={styles.ticketHeader}>
+        <ThemedText style={styles.ticketType}>{item.ticketType}</ThemedText>
         <ThemedText style={[styles.statusText, { color: item.used ? '#e53935' : '#43a047' }]}>
-          {item.used ? 'Đã sử dụng' : 'Chưa sử dụng'}
+          {item.used ? 'Đã soát vé' : 'Chưa soát vé'}
         </ThemedText>
       </ThemedView>
 
-      <ThemedView style={styles.ticketBody}>
-        <ThemedText type="subtitle" style={styles.concertTitle}>{item.concert_title}</ThemedText>
+      <ThemedView type="backgroundElement" style={styles.ticketBody}>
+        <ThemedText type="smallBold" style={styles.concertTitle}>{item.concertTitle}</ThemedText>
         <ThemedText style={styles.infoText} themeColor="textSecondary">📍 {item.venue}</ThemedText>
-        <ThemedText style={styles.infoText} themeColor="textSecondary">📅 {new Date(item.event_date).toLocaleString('vi-VN')}</ThemedText>
-        <ThemedText style={styles.infoText} themeColor="textSecondary">👤 Người sở hữu: {item.holder_name}</ThemedText>
+        <ThemedText style={styles.infoText} themeColor="textSecondary">
+          📅 {new Date(item.eventDate).toLocaleString('vi-VN', {
+            hour: '2-digit',
+            minute: '2-digit',
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric',
+          })}
+        </ThemedText>
+        <ThemedText style={styles.infoText} themeColor="textSecondary">👤 Khán giả: {item.holderName}</ThemedText>
       </ThemedView>
     </Pressable>
   );
 
+  if (loading && !refreshing) {
+    return (
+      <ThemedView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={theme.text} />
+      </ThemedView>
+    );
+  }
+
   return (
     <ThemedView style={styles.container}>
       <FlatList
-        data={DUMMY_TICKETS}
-        keyExtractor={(item) => item.ticket_id}
+        data={tickets}
+        keyExtractor={(item) => item.ticketId}
         renderItem={renderItem}
         contentContainerStyle={styles.listContent}
+        refreshing={refreshing}
+        onRefresh={handleRefresh}
         ListEmptyComponent={
           <ThemedView style={styles.emptyContainer}>
             <ThemedText themeColor="textSecondary">Bạn chưa sở hữu vé nào.</ThemedText>
@@ -62,30 +112,29 @@ const styles = StyleSheet.create({
   },
   ticketCard: {
     borderWidth: 1,
-    borderColor: '#e0e0e0',
     borderRadius: Spacing.two,
-    backgroundColor: '#fff',
     overflow: 'hidden',
+  },
+  ticketCardPressed: {
+    opacity: 0.9,
   },
   ticketHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    padding: Spacing.two,
-    backgroundColor: '#f5f5f5',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
+    paddingHorizontal: Spacing.three,
+    paddingVertical: Spacing.two,
   },
   ticketType: {
     fontWeight: 'bold',
+    fontSize: 14,
   },
   statusText: {
-    fontSize: 12,
+    fontSize: 13,
     fontWeight: 'bold',
   },
   ticketBody: {
     padding: Spacing.three,
     gap: Spacing.one,
-    backgroundColor: 'transparent',
   },
   concertTitle: {
     fontSize: 16,
@@ -93,10 +142,16 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.one,
   },
   infoText: {
-    fontSize: 13,
+    fontSize: 13.5,
   },
   emptyContainer: {
     paddingVertical: Spacing.six,
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
   },
 });
