@@ -1,8 +1,63 @@
-import axios, { AxiosError, InternalAxiosRequestConfig } from 'axios';
+import axios, { AxiosAdapter, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { storage } from '@/utils/storage';
 import { router } from 'expo-router';
+import { handleMockRequest } from '@/constants/mockData';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://10.0.2.2/api/v1';
+const USE_MOCK = process.env.EXPO_PUBLIC_USE_MOCK === 'true';
+
+// Custom Mock Adapter to intercept all requests offline if MOCK is enabled
+const mockAdapter: AxiosAdapter = async (config) => {
+  return new Promise((resolve, reject) => {
+    // Delay for 1 second to simulate network latency
+    setTimeout(async () => {
+      try {
+        let parsedData = null;
+        if (config.data) {
+          if (typeof config.data === 'string') {
+            try {
+              parsedData = JSON.parse(config.data);
+            } catch {
+              parsedData = config.data;
+            }
+          } else {
+            parsedData = config.data;
+          }
+        }
+
+        const relativeUrl = config.url ? config.url.replace(config.baseURL || '', '') : '';
+        const { status, data } = await handleMockRequest(relativeUrl, config.method || 'GET', parsedData);
+        
+        if (status >= 200 && status < 300) {
+          resolve({
+            data,
+            status,
+            statusText: 'OK',
+            headers: config.headers,
+            config,
+          } as any);
+        } else {
+          const error = new AxiosError(
+            `Request failed with status code ${status}`,
+            'ERR_BAD_REQUEST',
+            config,
+            null,
+            {
+              data,
+              status,
+              statusText: 'Bad Request',
+              headers: config.headers,
+              config,
+            } as any
+          );
+          reject(error);
+        }
+      } catch (err: any) {
+        reject(new Error(`Mock Adapter internal error: ${err.message}`));
+      }
+    }, 1000);
+  });
+};
 
 export const apiClient = axios.create({
   baseURL: API_URL,
@@ -10,6 +65,7 @@ export const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+  adapter: USE_MOCK ? mockAdapter : undefined,
 });
 
 interface FailedRequest {
