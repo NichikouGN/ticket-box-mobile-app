@@ -6,7 +6,7 @@ const secretKey = process.env.EXPO_PUBLIC_QR_SECRET_KEY || 'ticketbox_secure_qr_
 export interface MockConcert {
   id: string;
   title: string;
-  artists: string;
+  artists: string[];
   venue: string;
   start_time: string;
   status: string;
@@ -53,7 +53,7 @@ export const MOCK_CONCERTS: MockConcert[] = [
   {
     id: 'concert-1',
     title: 'Anh Trai Say Hi - Đêm Hội Tụ',
-    artists: 'HIEUTHUHAI, RHYDER, Negav, Quang Hùng MasterD, Anh Tú Atus',
+    artists: ['HIEUTHUHAI', 'RHYDER', 'Negav', 'Quang Hùng MasterD', 'Anh Tú Atus'],
     venue: 'Sân vận động Quân khu 7, TP. Hồ Chí Minh',
     start_time: '2026-07-15T18:00:00Z',
     status: 'published',
@@ -63,7 +63,7 @@ export const MOCK_CONCERTS: MockConcert[] = [
   {
     id: 'concert-2',
     title: 'Sơn Tùng M-TP - Live Concert 2026',
-    artists: 'Sơn Tùng M-TP',
+    artists: ['Sơn Tùng M-TP'],
     venue: 'Sân vận động Mỹ Đình, Hà Nội',
     start_time: '2026-08-22T19:00:00Z',
     status: 'published',
@@ -73,7 +73,7 @@ export const MOCK_CONCERTS: MockConcert[] = [
   {
     id: 'concert-3',
     title: 'Đen Vâu - Show Của Đen',
-    artists: 'Đen Vâu, JustaTee, Vũ',
+    artists: ['Đen Vâu', 'JustaTee', 'Vũ'],
     venue: 'Trung tâm Hội chợ và Triển lãm Sài Gòn (SECC), TP. HCM',
     start_time: '2026-09-05T19:30:00Z',
     status: 'published',
