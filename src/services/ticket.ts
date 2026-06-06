@@ -8,7 +8,7 @@ const mapTicket = (raw: RawTicket): Ticket => ({
   venue: raw.venue,
   ticketType: raw.ticket_type,
   holderName: raw.holder_name,
-  qrAes256: raw.qr_aes256,
+  qrAes256: raw.qr_aes256 || raw.qr_raw || '',
   used: raw.used,
 });
 

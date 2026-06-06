@@ -9,12 +9,13 @@ import { authService } from '@/services/auth';
 export default function RegisterScreen() {
   const router = useRouter();
   const [username, setUsername] = useState('');
+  const [fullName, setFullName] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleRegister = async () => {
-    if (!username.trim() || !password.trim() || !confirmPassword.trim()) {
+    if (!username.trim() || !fullName.trim() || !password.trim() || !confirmPassword.trim()) {
       Alert.alert('Lỗi', 'Vui lòng nhập đầy đủ các trường.');
       return;
     }
@@ -26,15 +27,15 @@ export default function RegisterScreen() {
 
     setLoading(true);
     try {
-      const response = await authService.signUp(username.trim(), password);
+      const response = await authService.signUp(username.trim(), password, fullName.trim());
       if (response.success) {
         Alert.alert('Đăng Ký Thành Công', 'Tài khoản của bạn đã được tạo. Vui lòng đăng nhập.', [
-          { text: 'OK', onPress: () => router.replace('/(auth)/login') }
+          { text: 'OK', onPress: () => router.replace('/login') }
         ]);
       }
     } catch (error: any) {
       console.error(error);
-      const errorMsg = error.response?.data?.message || 'Đăng ký thất bại. Tên đăng nhập có thể đã được sử dụng.';
+      const errorMsg = error.response?.data?.message || 'Đăng ký thất bại. Email có thể đã được sử dụng.';
       Alert.alert('Đăng Ký Thất Bại', errorMsg);
     } finally {
       setLoading(false);
@@ -50,12 +51,21 @@ export default function RegisterScreen() {
         </ThemedText>
 
         <TextInput
-          placeholder="Tên đăng nhập"
+          placeholder="Họ và tên"
+          placeholderTextColor="#888"
+          value={fullName}
+          onChangeText={setFullName}
+          style={styles.input}
+        />
+
+        <TextInput
+          placeholder="Email / Tên đăng nhập"
           placeholderTextColor="#888"
           value={username}
           onChangeText={setUsername}
           style={styles.input}
           autoCapitalize="none"
+          keyboardType="email-address"
         />
 
         <TextInput

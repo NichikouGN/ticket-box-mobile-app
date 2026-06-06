@@ -3,7 +3,7 @@ import { StyleSheet, Pressable, TextInput, ActivityIndicator, View, FlatList, Sc
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
-import { useRouter } from 'expo-router';
+import { useRouter, Stack } from 'expo-router';
 import { CameraView, useCameraPermissions } from 'expo-camera';
 import * as Crypto from 'expo-crypto';
 import { concertService } from '@/services/concert';
@@ -11,14 +11,25 @@ import { checkinService } from '@/services/checkin';
 import { Concert } from '@/types/concert';
 import { CheckinResult } from '@/types/checkin';
 import { useTheme } from '@/hooks/use-theme';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function ScannerScreen() {
   const router = useRouter();
   const theme = useTheme();
+  const { logout } = useAuth();
   const [permission, requestPermission] = useCameraPermissions();
   const [concerts, setConcerts] = useState<Concert[]>([]);
   const [loadingConcerts, setLoadingConcerts] = useState(true);
   const [selectedConcert, setSelectedConcert] = useState<{ id: string; title: string } | null>(null);
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.replace('/login');
+    } catch (e) {
+      console.error('Logout failed', e);
+    }
+  };
 
   const [manualInput, setManualInput] = useState('');
   const [scanning, setScanning] = useState(true);
@@ -66,7 +77,17 @@ export default function ScannerScreen() {
   if (!selectedConcert) {
     return (
       <ThemedView style={styles.concertSelectionContainer}>
-        <ThemedText type="subtitle" style={styles.selectionTitle}>Chọn Sự Kiện Soát Vé</ThemedText>
+        <Stack.Screen
+          options={{
+            headerShown: true,
+            title: 'Chọn Sự Kiện Soát Vé',
+            headerRight: () => (
+              <Pressable onPress={handleLogout} style={styles.headerLogoutBtn}>
+                <ThemedText style={styles.headerLogoutBtnText}>Đăng xuất</ThemedText>
+              </Pressable>
+            ),
+          }}
+        />
         <ThemedText style={styles.selectionSubtitle} themeColor="textSecondary">
           Vui lòng chọn sự kiện mà bạn đang được phân công trực soát vé tại cổng.
         </ThemedText>
@@ -159,48 +180,49 @@ export default function ScannerScreen() {
 
   return (
     <ThemedView style={styles.container}>
-      {/* Camera View */}
-      {scanning && !scanResult && !verifying && (
-        <CameraView
-          style={StyleSheet.absoluteFillObject}
-          facing="back"
-          onBarcodeScanned={handleBarcodeScanned}
-          barcodeScannerSettings={{
-            barcodeTypes: ['qr'],
-          }}
-        />
-      )}
+      <Stack.Screen
+        options={{
+          headerShown: true,
+          title: selectedConcert.title,
+          headerRight: () => (
+            <View style={styles.headerRightActions}>
+              <Pressable
+                onPress={() => router.push({
+                  pathname: '/(staff)/stats',
+                  params: { concertId: selectedConcert.id, concertTitle: selectedConcert.title }
+                })}
+                style={styles.headerStatsBtn}
+              >
+                <ThemedText style={styles.headerStatsBtnText}>📊 Thống Kê</ThemedText>
+              </Pressable>
+              <Pressable onPress={handleLogout} style={styles.headerLogoutBtnCompact}>
+                <ThemedText style={styles.headerLogoutBtnTextCompact}>Thoát</ThemedText>
+              </Pressable>
+            </View>
+          ),
+        }}
+      />
 
-      {/* Camera target reticle overlay */}
-      {scanning && !scanResult && !verifying && (
-        <View style={styles.reticleContainer}>
-          <View style={styles.reticle} />
-          <ThemedText style={styles.reticleText}>Đưa mã QR của vé vào khung hình</ThemedText>
-        </View>
-      )}
+      {/* Camera and Overlay Viewport */}
+      <View style={styles.scannerViewport}>
+        {scanning && !scanResult && !verifying && (
+          <CameraView
+            style={StyleSheet.absoluteFillObject}
+            facing="back"
+            onBarcodeScanned={handleBarcodeScanned}
+            barcodeScannerSettings={{
+              barcodeTypes: ['qr'],
+            }}
+          />
+        )}
 
-      <View style={styles.overlayContainer}>
-        {/* Top Info Bar */}
-        <ThemedView style={styles.topBar}>
-          <ThemedView style={styles.concertIndicator}>
-            <ThemedText style={styles.concertIndicatorLabel} numberOfLines={1}>
-              📌 {selectedConcert.title}
-            </ThemedText>
-            <Pressable onPress={() => setSelectedConcert(null)} style={styles.changeConcertBtn}>
-              <ThemedText style={styles.changeConcertText}>Đổi</ThemedText>
-            </Pressable>
-          </ThemedView>
-
-          <Pressable
-            onPress={() => router.push({
-              pathname: '/(staff)/stats',
-              params: { concertId: selectedConcert.id, concertTitle: selectedConcert.title }
-            })}
-            style={styles.statsButton}
-          >
-            <ThemedText style={styles.statsButtonText}>📊 Thống Kê</ThemedText>
-          </Pressable>
-        </ThemedView>
+        {/* Camera target reticle overlay */}
+        {scanning && !scanResult && !verifying && (
+          <View style={styles.reticleContainer}>
+            <View style={styles.reticle} />
+            <ThemedText style={styles.reticleText}>Đưa mã QR của vé vào khung hình</ThemedText>
+          </View>
+        )}
 
         {/* Verifying Loading Screen */}
         {verifying && (
@@ -292,37 +314,37 @@ export default function ScannerScreen() {
             </ScrollView>
           </View>
         )}
-
-        {/* Emulator Testing panel (shown when camera is active) */}
-        {scanning && !scanResult && !verifying && (
-          <ThemedView type="backgroundElement" style={styles.controlPanel}>
-            <ThemedText style={styles.panelTitle}>Emulator Support / Giả lập soát vé</ThemedText>
-            
-            <Pressable
-              onPress={handleMockScan}
-              style={({ pressed }) => [
-                styles.mockButton,
-                pressed && styles.buttonPressed,
-              ]}
-            >
-              <ThemedText style={styles.mockButtonText}>⚡ Quét vé lỗi ngẫu nhiên (Mock Scan)</ThemedText>
-            </Pressable>
-
-            <View style={styles.inputContainer}>
-              <TextInput
-                style={[styles.textInput, { borderColor: theme.backgroundSelected, backgroundColor: theme.background, color: theme.text }]}
-                placeholder="Dán mã QR raw tại đây để test..."
-                placeholderTextColor="#888"
-                value={manualInput}
-                onChangeText={setManualInput}
-              />
-              <Pressable onPress={handleManualSubmit} style={styles.submitButton}>
-                <ThemedText style={styles.submitButtonText}>Quét</ThemedText>
-              </Pressable>
-            </View>
-          </ThemedView>
-        )}
       </View>
+
+      {/* Emulator Testing panel (shown when camera is active) */}
+      {scanning && !scanResult && !verifying && (
+        <ThemedView type="backgroundElement" style={styles.controlPanel}>
+          <ThemedText style={styles.panelTitle}>Emulator Support / Giả lập soát vé</ThemedText>
+          
+          <Pressable
+            onPress={handleMockScan}
+            style={({ pressed }) => [
+              styles.mockButton,
+              pressed && styles.buttonPressed,
+            ]}
+          >
+            <ThemedText style={styles.mockButtonText}>⚡ Quét vé lỗi ngẫu nhiên (Mock Scan)</ThemedText>
+          </Pressable>
+
+          <View style={styles.inputContainer}>
+            <TextInput
+              style={[styles.textInput, { borderColor: theme.backgroundSelected, backgroundColor: theme.background, color: theme.text }]}
+              placeholder="Dán mã QR raw tại đây để test..."
+              placeholderTextColor="#888"
+              value={manualInput}
+              onChangeText={setManualInput}
+            />
+            <Pressable onPress={handleManualSubmit} style={styles.submitButton}>
+              <ThemedText style={styles.submitButtonText}>Quét</ThemedText>
+            </Pressable>
+          </View>
+        </ThemedView>
+      )}
     </ThemedView>
   );
 }
@@ -330,8 +352,7 @@ export default function ScannerScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    width: '100%',
   },
   loadingContainer: {
     flex: 1,
@@ -364,7 +385,7 @@ const styles = StyleSheet.create({
   concertSelectionContainer: {
     flex: 1,
     paddingHorizontal: Spacing.four,
-    paddingTop: Spacing.five,
+    paddingTop: Spacing.four,
   },
   selectionTitle: {
     fontWeight: 'bold',
@@ -423,56 +444,13 @@ const styles = StyleSheet.create({
     textShadowOffset: { width: 1, height: 1 },
     textShadowRadius: 3,
   },
-  overlayContainer: {
-    ...StyleSheet.absoluteFillObject,
-    justifyContent: 'space-between',
-    backgroundColor: 'transparent',
-  },
-  topBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: Spacing.three,
-    backgroundColor: 'transparent',
-  },
-  concertIndicator: {
+  scannerViewport: {
     flex: 1,
-    flexDirection: 'row',
+    width: '100%',
+    position: 'relative',
+    backgroundColor: '#000',
+    justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    paddingHorizontal: Spacing.three,
-    paddingVertical: Spacing.two,
-    borderRadius: Spacing.two,
-    marginRight: Spacing.two,
-    gap: Spacing.two,
-  },
-  concertIndicatorLabel: {
-    flex: 1,
-    color: '#fff',
-    fontSize: 12.5,
-    fontWeight: 'bold',
-  },
-  changeConcertBtn: {
-    paddingVertical: 2,
-    paddingHorizontal: Spacing.two,
-    backgroundColor: '#fff',
-    borderRadius: 4,
-  },
-  changeConcertText: {
-    fontSize: 10,
-    fontWeight: 'bold',
-    color: '#000',
-  },
-  statsButton: {
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.three,
-    backgroundColor: 'rgba(0,0,0,0.7)',
-    borderRadius: Spacing.two,
-  },
-  statsButtonText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 12.5,
   },
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -614,5 +592,45 @@ const styles = StyleSheet.create({
   },
   buttonPressed: {
     opacity: 0.8,
+  },
+  headerLogoutBtn: {
+    marginRight: Spacing.two,
+    paddingVertical: Spacing.one,
+    paddingHorizontal: Spacing.three,
+    backgroundColor: '#e53935',
+    borderRadius: Spacing.one,
+  },
+  headerLogoutBtnText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 13,
+  },
+  headerRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.two,
+    marginRight: Spacing.one,
+  },
+  headerStatsBtn: {
+    paddingVertical: Spacing.one,
+    paddingHorizontal: Spacing.two,
+    backgroundColor: '#1e88e5',
+    borderRadius: Spacing.one,
+  },
+  headerStatsBtnText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 12.5,
+  },
+  headerLogoutBtnCompact: {
+    paddingVertical: Spacing.one,
+    paddingHorizontal: Spacing.two,
+    backgroundColor: '#e53935',
+    borderRadius: Spacing.one,
+  },
+  headerLogoutBtnTextCompact: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 12.5,
   },
 });

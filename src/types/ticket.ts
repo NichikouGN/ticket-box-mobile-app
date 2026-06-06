@@ -5,7 +5,8 @@ export interface RawTicket {
   venue: string;
   ticket_type: string;
   holder_name: string;
-  qr_aes256: string;
+  qr_aes256?: string;
+  qr_raw?: string;
   used: boolean;
 }
 

@@ -15,7 +15,7 @@ export default function LoginScreen() {
 
   const handleLogin = async () => {
     if (!username.trim() || !password.trim()) {
-      Alert.alert('Lỗi', 'Vui lòng nhập đầy đủ tên đăng nhập và mật khẩu.');
+      Alert.alert('Lỗi', 'Vui lòng nhập đầy đủ email và mật khẩu.');
       return;
     }
 
@@ -41,12 +41,13 @@ export default function LoginScreen() {
         </ThemedText>
 
         <TextInput
-          placeholder="Tên đăng nhập"
+          placeholder="Nhập Email"
           placeholderTextColor="#888"
           value={username}
           onChangeText={setUsername}
           style={styles.input}
           autoCapitalize="none"
+          keyboardType="email-address"
         />
 
         <TextInput

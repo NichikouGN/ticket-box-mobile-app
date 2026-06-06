@@ -28,13 +28,15 @@ export const concertService = {
     const rawData = response.data;
     const mappedConcerts = rawData.data.map(mapConcert);
     
+    const rawPag = rawData.Pagination || (rawData as any).pagination;
+    
     return {
       success: rawData.success,
       data: mappedConcerts,
       pagination: {
-        currentPage: rawData.Pagination?.current_page || 1,
-        totalPage: rawData.Pagination?.total_page || 1,
-        totalItems: rawData.Pagination?.total_items || 0,
+        currentPage: rawPag?.current_page || 1,
+        totalPage: rawPag?.total_pages ?? rawPag?.total_page ?? 1,
+        totalItems: rawPag?.total_items || 0,
       },
     };
   },

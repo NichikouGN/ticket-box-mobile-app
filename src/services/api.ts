@@ -120,7 +120,7 @@ apiClient.interceptors.response.use(
     const originalRequest = error.config as InternalAxiosRequestConfig & { _retry?: boolean };
     
     // Check if error is 401 Unauthorized and request hasn't been retried yet
-    if (error.response?.status === 401 && originalRequest && !originalRequest._retry) {
+    if (error.response?.status === 401 && originalRequest && !originalRequest._retry && !USE_MOCK) {
       
       // If we are already refreshing, queue this request
       if (isRefreshing) {
@@ -185,7 +185,7 @@ apiClient.interceptors.response.use(
         await storage.clearAuth();
         
         // Redirect to login screen
-        router.replace('/(auth)/login');
+        router.replace('/login');
         
         return Promise.reject(refreshError);
       }

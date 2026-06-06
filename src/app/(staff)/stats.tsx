@@ -1,105 +1,305 @@
-import React from 'react';
-import { StyleSheet, View } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import { StyleSheet, View, ScrollView, RefreshControl, ActivityIndicator, Pressable, Alert } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { checkinService } from '@/services/checkin';
+import { CheckinStats } from '@/types/checkin';
+import { useTheme } from '@/hooks/use-theme';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function CheckinStatsScreen() {
-  // Mock data for Phase 1
-  const stats = {
-    total_tickets: 5000,
-    checked_in: 3240,
-    remaining: 1760,
-    by_ticket_type: [
-      { name: 'VIP', total: 500, checked_in: 480 },
-      { name: 'GA', total: 4500, checked_in: 2760 }
-    ]
+  const router = useRouter();
+  const theme = useTheme();
+  const { logout } = useAuth();
+  const { concertId, concertTitle } = useLocalSearchParams<{ concertId: string; concertTitle: string }>();
+
+  const [stats, setStats] = useState<CheckinStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+
+  const fetchStats = async () => {
+    if (!concertId) return;
+    try {
+      const data = await checkinService.getStats(concertId);
+      setStats(data);
+    } catch (error) {
+      console.error('Failed to load check-in stats', error);
+      Alert.alert('Lỗi', 'Không thể tải thống kê soát vé.');
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    fetchStats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [concertId]);
+
+  const handleRefresh = () => {
+    setRefreshing(true);
+    fetchStats();
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logout();
+      router.replace('/login');
+    } catch (e) {
+      console.error('Logout failed', e);
+    }
   };
 
   const getPercentage = (val: number, total: number) => {
     return total > 0 ? Math.round((val / total) * 100) : 0;
   };
 
+  if (loading && !refreshing) {
+    return (
+      <ThemedView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={theme.text} />
+        <ThemedText style={{ marginTop: Spacing.two }}>Đang tải số liệu thống kê...</ThemedText>
+      </ThemedView>
+    );
+  }
+
+  if (!stats) {
+    return (
+      <ThemedView style={styles.errorContainer}>
+        <ThemedText themeColor="textSecondary">Không tìm thấy dữ liệu thống kê.</ThemedText>
+      </ThemedView>
+    );
+  }
+
   return (
-    <ThemedView style={styles.container}>
-      <ThemedText type="title" style={styles.title}>Thống Kê Soát Vé</ThemedText>
-      
-      <ThemedView type="backgroundElement" style={styles.summaryContainer}>
-        <View style={styles.statBox}>
-          <ThemedText style={styles.statNumber}>{stats.total_tickets}</ThemedText>
-          <ThemedText style={styles.statLabel} themeColor="textSecondary">Tổng số vé</ThemedText>
+    <ScrollView 
+      style={styles.scrollView}
+      refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={theme.text} />
+      }
+    >
+      <ThemedView style={styles.container}>
+        {/* Header Section */}
+        <View style={styles.header}>
+          <View style={styles.headerTitleContainer}>
+            <ThemedText type="subtitle" style={styles.title}>Thống Kê Soát Vé</ThemedText>
+            <ThemedText style={styles.concertTitle} numberOfLines={1} themeColor="textSecondary">
+              📌 {concertTitle || 'Sự Kiện Đã Chọn'}
+            </ThemedText>
+          </View>
+          <Pressable onPress={handleLogout} style={styles.logoutButton}>
+            <ThemedText style={styles.logoutButtonText}>🚪 Đăng Xuất</ThemedText>
+          </Pressable>
         </View>
 
-        <View style={styles.statBox}>
-          <ThemedText style={[styles.statNumber, { color: '#43a047' }]}>
-            {stats.checked_in}
-          </ThemedText>
-          <ThemedText style={styles.statLabel} themeColor="textSecondary">Đã check-in</ThemedText>
+        {/* Dashboard Grid Cards */}
+        <View style={styles.cardsGrid}>
+          {/* Card 1: Tổng số vé phát hành */}
+          <ThemedView type="backgroundElement" style={[styles.largeCard, { borderColor: '#1e88e5', borderLeftWidth: 5 }]}>
+            <View style={styles.cardHeader}>
+              <ThemedText style={styles.cardIcon}>🎟️</ThemedText>
+              <ThemedText style={styles.cardLabel} themeColor="textSecondary">TỔNG SỐ VÉ PHÁT HÀNH</ThemedText>
+            </View>
+            <ThemedText style={[styles.cardValue, { color: '#1e88e5' }]}>{stats.totalTickets}</ThemedText>
+          </ThemedView>
+
+          <View style={styles.halfCardsRow}>
+            {/* Card 2: Số vé đã quét */}
+            <ThemedView type="backgroundElement" style={[styles.halfCard, { borderColor: '#43a047', borderLeftWidth: 5 }]}>
+              <View style={styles.cardHeader}>
+                <ThemedText style={styles.cardIcon}>✅</ThemedText>
+                <ThemedText style={styles.cardLabel} themeColor="textSecondary">ĐÃ SOÁT VÉ</ThemedText>
+              </View>
+              <ThemedText style={[styles.cardValue, { color: '#43a047' }]}>{stats.scannedTickets}</ThemedText>
+            </ThemedView>
+
+            {/* Card 3: Số vé chưa quét */}
+            <ThemedView type="backgroundElement" style={[styles.halfCard, { borderColor: stats.remainingTickets > 0 ? '#e53935' : '#757575', borderLeftWidth: 5 }]}>
+              <View style={styles.cardHeader}>
+                <ThemedText style={styles.cardIcon}>⏳</ThemedText>
+                <ThemedText style={styles.cardLabel} themeColor="textSecondary">CHƯA SOÁT VÉ</ThemedText>
+              </View>
+              <ThemedText style={[styles.cardValue, { color: stats.remainingTickets > 0 ? '#e53935' : '#757575' }]}>
+                {stats.remainingTickets}
+              </ThemedText>
+            </ThemedView>
+          </View>
         </View>
 
-        <View style={styles.statBox}>
-          <ThemedText style={[styles.statNumber, { color: '#e53935' }]}>
-            {stats.remaining}
+        {/* Progress Circle Visual Simulation */}
+        <ThemedView type="backgroundElement" style={styles.visualCard}>
+          <ThemedText style={styles.visualTitle}>Tỷ lệ soát vé tại cổng</ThemedText>
+          <ThemedText style={styles.visualPercent}>
+            {getPercentage(stats.scannedTickets, stats.totalTickets)}%
           </ThemedText>
-          <ThemedText style={styles.statLabel} themeColor="textSecondary">Chưa check-in</ThemedText>
+          <ThemedText style={styles.visualSubtitle} themeColor="textSecondary">
+            Số vé đã check-in trên tổng lượng phát hành
+          </ThemedText>
+        </ThemedView>
+
+        {/* Ticket category Breakdown */}
+        <ThemedText type="smallBold" style={styles.sectionTitle}>CHI TIẾT THEO HẠNG VÉ</ThemedText>
+        
+        <View style={styles.detailsList}>
+          {stats.byTicketType.map((type) => {
+            const percent = getPercentage(type.scannedTickets || type.checkedIn, type.total);
+            return (
+              <ThemedView 
+                key={type.name} 
+                type="backgroundElement" 
+                style={[styles.typeRow, { borderColor: theme.backgroundSelected }]}
+              >
+                <View style={styles.rowInfo}>
+                  <ThemedText style={styles.typeName}>{type.name}</ThemedText>
+                  <ThemedText style={styles.typeStats} themeColor="textSecondary">
+                    {type.scannedTickets || type.checkedIn} / {type.total} ({percent}%)
+                  </ThemedText>
+                </View>
+                {/* Progress bar */}
+                <View style={[styles.progressBackground, { backgroundColor: theme.backgroundSelected }]}>
+                  <View 
+                    style={[
+                      styles.progressBar, 
+                      { 
+                        width: `${percent}%`, 
+                        backgroundColor: percent >= 80 ? '#2e7d32' : percent >= 40 ? '#ef6c00' : '#1e88e5'
+                      }
+                    ]} 
+                  />
+                </View>
+              </ThemedView>
+            );
+          })}
         </View>
       </ThemedView>
-
-      <ThemedText type="subtitle" style={styles.sectionTitle}>Chi Tiết Theo Hạng Vé</ThemedText>
-      
-      <View style={styles.detailsList}>
-        {stats.by_ticket_type.map((type) => {
-          const percent = getPercentage(type.checked_in, type.total);
-          return (
-            <ThemedView key={type.name} type="backgroundElement" style={styles.typeRow}>
-              <View style={styles.rowInfo}>
-                <ThemedText style={styles.typeName}>{type.name}</ThemedText>
-                <ThemedText themeColor="textSecondary">
-                  {type.checked_in}/{type.total} ({percent}%)
-                </ThemedText>
-              </View>
-              {/* Progress bar */}
-              <View style={styles.progressBackground}>
-                <View style={[styles.progressBar, { width: `${percent}%` }]} />
-              </View>
-            </ThemedView>
-          );
-        })}
-      </View>
-    </ThemedView>
+    </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
+  scrollView: {
     flex: 1,
+  },
+  container: {
     padding: Spacing.four,
     gap: Spacing.four,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.six,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: Spacing.six,
+  },
+  header: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.two,
+  },
+  headerTitleContainer: {
+    flex: 1,
+    marginRight: Spacing.two,
   },
   title: {
     fontSize: 22,
     fontWeight: 'bold',
   },
-  summaryContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    padding: Spacing.three,
-    borderRadius: Spacing.two,
+  concertTitle: {
+    fontSize: 13,
+    marginTop: Spacing.half,
   },
-  statBox: {
+  logoutButton: {
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.three,
+    borderRadius: Spacing.two,
+    borderWidth: 1,
+    borderColor: '#e53935',
+  },
+  logoutButtonText: {
+    color: '#e53935',
+    fontWeight: 'bold',
+    fontSize: 13,
+  },
+  cardsGrid: {
+    gap: Spacing.three,
+  },
+  largeCard: {
+    padding: Spacing.four,
+    borderRadius: Spacing.three,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 2,
+    borderWidth: 1,
+  },
+  halfCardsRow: {
+    flexDirection: 'row',
+    gap: Spacing.three,
+  },
+  halfCard: {
+    flex: 1,
+    padding: Spacing.four,
+    borderRadius: Spacing.three,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 2,
+    borderWidth: 1,
+  },
+  cardHeader: {
+    flexDirection: 'row',
     alignItems: 'center',
     gap: Spacing.one,
   },
-  statNumber: {
-    fontSize: 24,
+  cardIcon: {
+    fontSize: 16,
+  },
+  cardLabel: {
+    fontSize: 11.5,
     fontWeight: 'bold',
   },
-  statLabel: {
+  cardValue: {
+    fontSize: 28,
+    fontWeight: '900',
+    marginTop: Spacing.two,
+  },
+  visualCard: {
+    paddingHorizontal: Spacing.four,
+    paddingVertical: Spacing.six,
+    borderRadius: Spacing.three,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: Spacing.two,
+    minHeight: 160,
+  },
+  visualTitle: {
+    fontSize: 14,
+    fontWeight: 'bold',
+  },
+  visualPercent: {
+    fontSize: 48,
+    lineHeight: 56,
+    fontWeight: '900',
+    color: '#1e88e5',
+  },
+  visualSubtitle: {
     fontSize: 12,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: 'bold',
+    fontSize: 14,
+    fontWeight: '700',
+    letterSpacing: 0.5,
     marginTop: Spacing.two,
   },
   detailsList: {
@@ -108,6 +308,7 @@ const styles = StyleSheet.create({
   typeRow: {
     padding: Spacing.three,
     borderRadius: Spacing.two,
+    borderWidth: 1,
     gap: Spacing.two,
   },
   rowInfo: {
@@ -117,16 +318,19 @@ const styles = StyleSheet.create({
   },
   typeName: {
     fontWeight: 'bold',
-    fontSize: 16,
+    fontSize: 15.5,
+  },
+  typeStats: {
+    fontSize: 13.5,
+    fontWeight: '600',
   },
   progressBackground: {
     height: 8,
-    backgroundColor: '#e0e0e0',
     borderRadius: 4,
     overflow: 'hidden',
   },
   progressBar: {
     height: '100%',
-    backgroundColor: '#000',
+    borderRadius: 4,
   },
 });

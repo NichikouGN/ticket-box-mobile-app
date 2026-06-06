@@ -2,6 +2,37 @@ import CryptoJS from 'crypto-js';
 
 const secretKey = process.env.EXPO_PUBLIC_QR_SECRET_KEY || 'ticketbox_secure_qr_secret_key_2026';
 
+export interface MockUser {
+  id: string;
+  email: string;
+  password: string;
+  fullName: string;
+  role: 'audience' | 'staff';
+  status: 'active' | 'banned';
+}
+
+export const MOCK_USERS: MockUser[] = [
+  {
+    id: 'usr-1',
+    email: 'user@test.com',
+    password: '123456',
+    fullName: 'Nguyen Van A',
+    role: 'audience',
+    status: 'active',
+  },
+  {
+    id: 'usr-2',
+    email: 'staff@test.com',
+    password: '123456',
+    fullName: 'Tran Van B',
+    role: 'staff',
+    status: 'active',
+  },
+];
+
+export let mockUsers: MockUser[] = [...MOCK_USERS];
+export let mockConcertOffsets: Record<string, number> = {};
+
 // Interfaces matching backend raw formats
 export interface MockConcert {
   id: string;
@@ -154,17 +185,87 @@ seedInitialTickets();
 
 // Main handler routing mock requests
 export const handleMockRequest = async (url: string, method: string, body?: any): Promise<{ status: number; data: any }> => {
-  // Normalize path
-  const path = url.replace(/^\/api\/v1/, '').split('?')[0];
+  // Normalize path and method
+  const path = url.replace(/^\/?api\/v1/, '').split('?')[0];
+  const normalizedMethod = method.toUpperCase();
 
   // Auth logins
-  if (path === '/auth/login' || path === '/users/sign-in') {
+  if ((path === '/auth/login' || path === '/users/sign-in') && normalizedMethod === 'POST') {
+    const userEmail = body?.email || body?.username || '';
+    const userPassword = body?.password || '';
+
+    const matchedUser = mockUsers.find(
+      u => u.email.toLowerCase() === userEmail.toLowerCase() && u.password === userPassword
+    );
+
+    if (!matchedUser) {
+      return {
+        status: 401,
+        data: {
+          success: false,
+          message: 'Tài khoản hoặc mật khẩu không chính xác!',
+        },
+      };
+    }
+
     return {
       status: 200,
       data: {
         success: true,
         access_token: 'mock-access-token-jwt',
         refresh_token: 'mock-refresh-token-jwt',
+        user: {
+          id: matchedUser.id,
+          email: matchedUser.email,
+          full_name: matchedUser.fullName,
+          role: matchedUser.role,
+          status: matchedUser.status,
+        },
+      },
+    };
+  }
+
+  // Register (Sign-up)
+  if ((path === '/auth/register' || path === '/users/sign-up') && normalizedMethod === 'POST') {
+    const regEmail = body?.email || body?.username || '';
+    const regPassword = body?.password || '';
+    const regFullName = body?.fullName || body?.full_name || 'New Audience User';
+
+    if (!regEmail || !regPassword) {
+      return {
+        status: 400,
+        data: {
+          success: false,
+          message: 'Vui lòng nhập đầy đủ email và mật khẩu.',
+        },
+      };
+    }
+
+    const exists = mockUsers.some(u => u.email.toLowerCase() === regEmail.toLowerCase());
+    if (exists) {
+      return {
+        status: 400,
+        data: {
+          success: false,
+          message: 'Email này đã được sử dụng!',
+        },
+      };
+    }
+
+    mockUsers.push({
+      id: 'usr-' + mockUUID(),
+      email: regEmail,
+      password: regPassword,
+      fullName: regFullName,
+      role: 'audience',
+      status: 'active',
+    });
+
+    return {
+      status: 201,
+      data: {
+        success: true,
+        message: 'Đăng ký thành công!',
       },
     };
   }
@@ -218,7 +319,7 @@ export const handleMockRequest = async (url: string, method: string, body?: any)
   }
 
   // Orders creation
-  if (path === '/orders' && method === 'POST') {
+  if (path === '/orders' && normalizedMethod === 'POST') {
     const items = body?.data || [];
     if (items.length === 0) {
       return { status: 400, data: { success: false, message: 'No items selected' } };
@@ -291,7 +392,7 @@ export const handleMockRequest = async (url: string, method: string, body?: any)
   }
 
   // Payments trigger (mock payment gateway screen action)
-  if (path === '/payments' && method === 'POST') {
+  if (path === '/payments' && normalizedMethod === 'POST') {
     const orderId = body?.order_id || body?.orderId;
     const targetStatusInput = body?.status === 'SUCCESS' ? 'SUCCESS' : 'FAILED';
     const scenario = body?.scenario || 'success';
@@ -381,7 +482,7 @@ export const handleMockRequest = async (url: string, method: string, body?: any)
   }
 
   // Staff check-in verification
-  if (path === '/checkin/verify' && method === 'POST') {
+  if (path === '/checkin/verify' && normalizedMethod === 'POST') {
     const qrSha256 = body?.qr_sha256;
     const concertId = body?.concert_id;
 
@@ -466,24 +567,40 @@ export const handleMockRequest = async (url: string, method: string, body?: any)
   if (statsMatch) {
     const concertId = statsMatch[1];
     
+    // Increment mock offsets to simulate background entries
+    if (!mockConcertOffsets[concertId]) {
+      mockConcertOffsets[concertId] = 0;
+    }
+    mockConcertOffsets[concertId] += Math.floor(Math.random() * 3) + 1;
+    const offset = mockConcertOffsets[concertId];
+
     // Compute stats from MOCK_TICKET_TYPES and mockTickets
     const types = MOCK_TICKET_TYPES[concertId] || [];
     let totalTickets = 0;
     let checkedIn = 0;
 
-    const byTicketType = types.map(t => {
+    const byTicketType = types.map((t, idx) => {
       // Find sold tickets for this type
       const soldTickets = mockTickets.filter(mt => mt.concert_id === concertId && mt.ticket_type === t.name);
       const ticketTotal = soldTickets.length + t.available_seats; // total is sold + remaining available
-      const ticketCheckedIn = soldTickets.filter(mt => mt.used).length;
       
+      let ticketCheckedIn = soldTickets.filter(mt => mt.used).length;
+      
+      // Add simulated entries, making sure it doesn't exceed the total seats
+      const simulatedExtra = Math.min(
+        offset + (idx * 3), 
+        t.available_seats
+      );
+      ticketCheckedIn += simulatedExtra;
+
       totalTickets += ticketTotal;
       checkedIn += ticketCheckedIn;
 
       return {
         name: t.name,
         total: ticketTotal,
-        checked_in: ticketCheckedIn
+        checked_in: ticketCheckedIn,
+        scanned_tickets: ticketCheckedIn,
       };
     });
 
@@ -494,7 +611,9 @@ export const handleMockRequest = async (url: string, method: string, body?: any)
         data: {
           total_tickets: totalTickets,
           checked_in: checkedIn,
+          scanned_tickets: checkedIn,
           remaining: totalTickets - checkedIn,
+          remaining_tickets: totalTickets - checkedIn,
           by_ticket_type: byTicketType
         }
       }
@@ -505,7 +624,7 @@ export const handleMockRequest = async (url: string, method: string, body?: any)
     status: 404, 
     data: { 
       success: false, 
-      message: `API Route Mock Not Found: [${method.toUpperCase()}] ${path}` 
+      message: `API Route Mock Not Found: [${normalizedMethod}] ${path}` 
     } 
   };
 };

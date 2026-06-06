@@ -20,7 +20,7 @@ function NavigationGate() {
     if (!isAuthenticated) {
       // Redirect to login if not authenticated and not already in auth group
       if (!inAuthGroup) {
-        router.replace('/(auth)/login');
+        router.replace('/login');
       }
     } else {
       // If authenticated, redirect to appropriate entry screens if in wrong group

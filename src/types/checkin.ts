@@ -29,21 +29,27 @@ export interface CheckinResult {
 export interface RawCheckinStats {
   total_tickets: number;
   checked_in: number;
+  scanned_tickets?: number;
   remaining: number;
+  remaining_tickets?: number;
   by_ticket_type: {
     name: string;
     total: number;
     checked_in: number;
+    scanned_tickets?: number;
   }[];
 }
 
 export interface CheckinStats {
   totalTickets: number;
   checkedIn: number;
+  scannedTickets: number;
   remaining: number;
+  remainingTickets: number;
   byTicketType: {
     name: string;
     total: number;
     checkedIn: number;
+    scannedTickets: number;
   }[];
 }

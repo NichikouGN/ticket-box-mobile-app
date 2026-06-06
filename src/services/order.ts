@@ -1,12 +1,16 @@
 import { apiClient } from './api';
 import { 
-  BookingRequest, 
   BookingResponse, 
   OrderItem, 
   PaymentDetails, 
-  RawBookingResponse, 
-  RawPaymentDetails 
+  RawBookingResponse 
 } from '@/types/order';
+
+const USE_MOCK = process.env.EXPO_PUBLIC_USE_MOCK === 'true';
+
+// In-memory registry to map order_id to payment_id for polling resolution
+const orderToPaymentMap: Record<string, string> = {};
+const mockPollCounts: Record<string, number> = {};
 
 export const orderService = {
   async createOrder(items: OrderItem[], idempotencyKey: string): Promise<BookingResponse> {
@@ -27,31 +31,120 @@ export const orderService = {
     );
 
     const resData = response.data;
-    
+    const orderId = resData.data.order_id;
+
+    // Online Mode - defensive payment_id discovery
+    if (!USE_MOCK && orderId) {
+      // 1. Try to check if response data includes payment_id directly
+      const responsePaymentId = (resData.data as any).payment_id || (resData.data as any).paymentId;
+      if (responsePaymentId) {
+        orderToPaymentMap[orderId] = responsePaymentId;
+      } else {
+        // 2. Fetch order history in background to locate the payment_id linked to the order
+        (async () => {
+          try {
+            const listResponse = await apiClient.get<{ success: boolean; data: any[] }>('/orders');
+            if (listResponse.data && listResponse.data.success && Array.isArray(listResponse.data.data)) {
+              const matchedOrder = listResponse.data.data.find(
+                (o: any) => o.id === orderId || o.order_id === orderId
+              );
+              if (matchedOrder) {
+                const pId = matchedOrder.payment_id || matchedOrder.payment?.id || matchedOrder.paymentId;
+                if (pId) {
+                  orderToPaymentMap[orderId] = pId;
+                }
+              }
+            }
+          } catch (e) {
+            console.warn('[Defensive Polling] Failed to retrieve user orders list in background', e);
+          }
+        })();
+      }
+    }
+
     return {
       success: resData.success,
       message: resData.message,
-      orderId: resData.data.order_id,
+      orderId: orderId,
       totalPrice: resData.data.total_price,
       paymentDeadline: resData.data.payment_deadline,
     };
   },
 
   async getPaymentStatus(orderOrPaymentId: string): Promise<PaymentDetails> {
-    const response = await apiClient.get<RawPaymentDetails>(`/payments/${orderOrPaymentId}`);
-    const rawData = response.data.data;
+    // Kịch bản chạy Local (Khi bật Mock Data)
+    if (USE_MOCK) {
+      // Giả lập độ trễ mạng từ 1 đến 2 giây (delay 1-2 giây)
+      await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
+
+      if (!mockPollCounts[orderOrPaymentId]) {
+        mockPollCounts[orderOrPaymentId] = 0;
+      }
+      mockPollCounts[orderOrPaymentId] += 1;
+      const currentPoll = mockPollCounts[orderOrPaymentId];
+
+      const status = currentPoll >= 3 ? 'SUCCESS' : 'PENDING';
+
+      return {
+        paymentId: 'mock-pay-' + orderOrPaymentId,
+        orderId: orderOrPaymentId,
+        status: status,
+        amount: 3500000,
+        paymentRef: status === 'SUCCESS' ? 'MOCK-TXN-' + Math.floor(10000000 + Math.random() * 90000000) : 'MOCK-TXN-PENDING',
+        processedAt: new Date().toISOString(),
+      };
+    }
+
+    // Kịch bản chạy Online (Khi kết nối Backend thật)
+    let paymentId = orderToPaymentMap[orderOrPaymentId];
+
+    // If paymentId was not resolved during createOrder background task, try resolving it here
+    if (!paymentId || paymentId === orderOrPaymentId) {
+      try {
+        const listResponse = await apiClient.get<{ success: boolean; data: any[] }>('/orders');
+        if (listResponse.data && listResponse.data.success && Array.isArray(listResponse.data.data)) {
+          const matchedOrder = listResponse.data.data.find(
+            (o: any) => o.id === orderOrPaymentId || o.order_id === orderOrPaymentId
+          );
+          if (matchedOrder) {
+            const pId = matchedOrder.payment_id || matchedOrder.payment?.id || matchedOrder.paymentId || matchedOrder.payment?.payment_id;
+            if (pId) {
+              orderToPaymentMap[orderOrPaymentId] = pId;
+              paymentId = pId;
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('[Defensive Polling] Failed to query user orders list', e);
+      }
+    }
+
+    // Fallback if payment_id cannot be found, query using the orderId directly
+    const finalQueryId = paymentId || orderOrPaymentId;
+
+    const response = await apiClient.get<any>(`/payments/${finalQueryId}`);
+    const rawData = response.data?.data || response.data;
+
+    if (!rawData) {
+      throw new Error('No payment details found in server response');
+    }
 
     return {
-      paymentId: rawData.payment_id,
-      orderId: rawData.order_id,
-      status: rawData.status,
-      amount: rawData.amount,
-      paymentRef: rawData.payment_ref,
-      processedAt: rawData.processed_at,
+      paymentId: rawData.payment_id || rawData.paymentId || finalQueryId,
+      orderId: rawData.order_id || rawData.orderId || orderOrPaymentId,
+      status: rawData.status || 'PENDING',
+      amount: rawData.amount || 0,
+      paymentRef: rawData.payment_ref || rawData.paymentRef || 'MOCK-TXN-PENDING',
+      processedAt: rawData.processed_at || rawData.processedAt || new Date().toISOString(),
     };
   },
 
   async triggerMockPayment(orderId: string, scenario: 'success' | 'fail' | 'timeout'): Promise<any> {
+    if (USE_MOCK) {
+      // Bỏ qua tương tác mạng hoàn toàn để tránh quăng lỗi 404 Axios khi offline
+      return { success: true, message: `Mock scenario ${scenario} applied locally.` };
+    }
+
     const response = await apiClient.post('/payments', {
       orderId,
       order_id: orderId,

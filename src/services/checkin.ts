@@ -30,12 +30,15 @@ export const checkinService = {
     
     return {
       totalTickets: rd.total_tickets,
-      checkedIn: rd.checked_in,
-      remaining: rd.remaining,
-      byTicketType: rd.by_ticket_type.map(item => ({
+      checkedIn: rd.checked_in ?? rd.scanned_tickets ?? 0,
+      scannedTickets: rd.scanned_tickets ?? rd.checked_in ?? 0,
+      remaining: rd.remaining ?? rd.remaining_tickets ?? 0,
+      remainingTickets: rd.remaining_tickets ?? rd.remaining ?? 0,
+      byTicketType: (rd.by_ticket_type || []).map(item => ({
         name: item.name,
         total: item.total,
-        checkedIn: item.checked_in,
+        checkedIn: item.checked_in ?? item.scanned_tickets ?? 0,
+        scannedTickets: item.scanned_tickets ?? item.checked_in ?? 0,
       })),
     };
   },
