@@ -31,7 +31,11 @@ yarn-error.*
 *.pem
 
 # local env files
-.env*.local
+.env
+.env.local
+.env.*.local
+.env.development
+.env.production
 
 # typescript
 *.tsbuildinfo
@@ -41,3 +45,10 @@ example
 # generated native folders
 /ios
 /android
+
+# Millenacious
+summarize.py
+
+# Document
+TicketBox Markdown/backend-document/
+TicketBox Markdown/web-document/
