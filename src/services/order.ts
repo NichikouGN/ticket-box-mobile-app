@@ -6,13 +6,22 @@ import {
   RawBookingResponse 
 } from '@/types/order';
 
-const USE_MOCK = process.env.EXPO_PUBLIC_USE_MOCK === 'true';
+let mockOverride: boolean | null = null;
+
+const isMock = () => {
+  if (mockOverride !== null) return mockOverride;
+  return process.env.EXPO_PUBLIC_USE_MOCK === 'true';
+};
 
 // In-memory registry to map order_id to payment_id for polling resolution
 const orderToPaymentMap: Record<string, string> = {};
 const mockPollCounts: Record<string, number> = {};
 
 export const orderService = {
+  setMockOverride(val: boolean | null) {
+    mockOverride = val;
+  },
+
   async createOrder(items: OrderItem[], idempotencyKey: string): Promise<BookingResponse> {
     // Map items from camelCase to snake_case for backend compatibility
     const rawData = items.map(item => ({
@@ -34,7 +43,7 @@ export const orderService = {
     const orderId = resData.data.order_id;
 
     // Online Mode - defensive payment_id discovery
-    if (!USE_MOCK && orderId) {
+    if (!isMock() && orderId) {
       // 1. Try to check if response data includes payment_id directly
       const responsePaymentId = (resData.data as any).payment_id || (resData.data as any).paymentId;
       if (responsePaymentId) {
@@ -73,7 +82,7 @@ export const orderService = {
 
   async getPaymentStatus(orderOrPaymentId: string): Promise<PaymentDetails> {
     // Kịch bản chạy Local (Khi bật Mock Data)
-    if (USE_MOCK) {
+    if (isMock()) {
       // Giả lập độ trễ mạng từ 1 đến 2 giây (delay 1-2 giây)
       await new Promise(resolve => setTimeout(resolve, 1000 + Math.random() * 1000));
 
@@ -140,7 +149,7 @@ export const orderService = {
   },
 
   async triggerMockPayment(orderId: string, scenario: 'success' | 'fail' | 'timeout'): Promise<any> {
-    if (USE_MOCK) {
+    if (isMock()) {
       // Bỏ qua tương tác mạng hoàn toàn để tránh quăng lỗi 404 Axios khi offline
       return { success: true, message: `Mock scenario ${scenario} applied locally.` };
     }

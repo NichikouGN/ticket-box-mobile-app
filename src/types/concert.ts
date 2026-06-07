@@ -7,6 +7,10 @@ export interface Concert {
   status: string;
   thumbnailUrl: string;
   description?: string;
+  artist?: {
+    name?: string;
+    bio?: string;
+  };
 }
 
 export interface TicketType {
@@ -44,6 +48,10 @@ export interface RawConcert {
   status: string;
   thumbnail_url: string;
   description?: string;
+  artist?: {
+    name?: string;
+    bio?: string;
+  };
 }
 
 export interface RawTicketType {

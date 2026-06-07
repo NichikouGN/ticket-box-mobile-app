@@ -17,6 +17,10 @@ const mapConcert = (raw: RawConcert): Concert => ({
   status: raw.status,
   thumbnailUrl: raw.thumbnail_url,
   description: raw.description,
+  artist: raw.artist ? {
+    name: raw.artist.name,
+    bio: raw.artist.bio,
+  } : undefined,
 });
 
 export const concertService = {
@@ -28,7 +32,7 @@ export const concertService = {
     const rawData = response.data;
     const mappedConcerts = rawData.data.map(mapConcert);
     
-    const rawPag = rawData.Pagination || (rawData as any).pagination;
+    const rawPag = (rawData.Pagination || (rawData as any).pagination) as any;
     
     return {
       success: rawData.success,

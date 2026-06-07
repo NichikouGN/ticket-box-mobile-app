@@ -1,17 +1,17 @@
-import React, { useState, useEffect } from 'react';
-import { StyleSheet, Pressable, TextInput, ActivityIndicator, View, FlatList, ScrollView } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
-import { useRouter, Stack } from 'expo-router';
-import { CameraView, useCameraPermissions } from 'expo-camera';
-import * as Crypto from 'expo-crypto';
-import { concertService } from '@/services/concert';
-import { checkinService } from '@/services/checkin';
-import { Concert } from '@/types/concert';
-import { CheckinResult } from '@/types/checkin';
 import { useTheme } from '@/hooks/use-theme';
 import { useAuth } from '@/hooks/useAuth';
+import { checkinService } from '@/services/checkin';
+import { concertService } from '@/services/concert';
+import { CheckinResult } from '@/types/checkin';
+import { Concert } from '@/types/concert';
+import { CameraView, useCameraPermissions } from 'expo-camera';
+import * as Crypto from 'expo-crypto';
+import { Stack, useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
+import { ActivityIndicator, Alert, FlatList, Linking, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
 
 export default function ScannerScreen() {
   const router = useRouter();
@@ -21,6 +21,20 @@ export default function ScannerScreen() {
   const [concerts, setConcerts] = useState<Concert[]>([]);
   const [loadingConcerts, setLoadingConcerts] = useState(true);
   const [selectedConcert, setSelectedConcert] = useState<{ id: string; title: string } | null>(null);
+
+  const handlePermissionRequest = async () => {
+    const res = await requestPermission();
+    if (!res.granted && !res.canAskAgain) {
+      Alert.alert(
+        'Yêu cầu quyền truy cập Camera',
+        'Bạn đã từ chối quyền truy cập camera. Vui lòng mở Cài đặt của thiết bị để cấp quyền truy cập camera cho ứng dụng.',
+        [
+          { text: 'Hủy', style: 'cancel' },
+          { text: 'Mở Cài đặt', onPress: () => Linking.openSettings() }
+        ]
+      );
+    }
+  };
 
   const handleLogout = async () => {
     try {
@@ -66,7 +80,7 @@ export default function ScannerScreen() {
         <ThemedText style={styles.permissionMessage}>
           Nhân viên soát vé cần cấp quyền truy cập camera để quét mã QR vé của khách hàng.
         </ThemedText>
-        <Pressable onPress={requestPermission} style={styles.permissionButton}>
+        <Pressable onPress={handlePermissionRequest} style={styles.permissionButton}>
           <ThemedText style={styles.permissionButtonText}>Cấp Quyền Camera</ThemedText>
         </Pressable>
       </ThemedView>
@@ -207,7 +221,7 @@ export default function ScannerScreen() {
       <View style={styles.scannerViewport}>
         {scanning && !scanResult && !verifying && (
           <CameraView
-            style={StyleSheet.absoluteFillObject}
+            style={StyleSheet.absoluteFill}
             facing="back"
             onBarcodeScanned={handleBarcodeScanned}
             barcodeScannerSettings={{
@@ -234,7 +248,7 @@ export default function ScannerScreen() {
 
         {/* Dynamic Status Overlays */}
         {scanResult && (
-          <View 
+          <View
             style={[
               styles.resultOverlay,
               scanResult.result === 'SUCCESS' && { backgroundColor: '#2e7d32' },
@@ -320,7 +334,7 @@ export default function ScannerScreen() {
       {scanning && !scanResult && !verifying && (
         <ThemedView type="backgroundElement" style={styles.controlPanel}>
           <ThemedText style={styles.panelTitle}>Emulator Support / Giả lập soát vé</ThemedText>
-          
+
           <Pressable
             onPress={handleMockScan}
             style={({ pressed }) => [
@@ -453,7 +467,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   loadingOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.8)',
     justifyContent: 'center',
     alignItems: 'center',
@@ -465,7 +479,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
   resultOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     padding: Spacing.five,
     justifyContent: 'center',
   },

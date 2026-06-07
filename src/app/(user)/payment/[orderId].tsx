@@ -1,11 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { StyleSheet, Pressable, ActivityIndicator, Alert, View } from 'react-native';
+import { StyleSheet, Pressable, ActivityIndicator, Alert } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { orderService } from '@/services/order';
-import { PaymentDetails, PaymentStatus } from '@/types/order';
+import { PaymentDetails } from '@/types/order';
 
 export default function PaymentScreen() {
   const { orderId } = useLocalSearchParams<{ orderId: string }>();
@@ -68,7 +68,6 @@ export default function PaymentScreen() {
       }
     };
 
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     loadPaymentDetails();
 
     return () => {

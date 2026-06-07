@@ -43,6 +43,10 @@ export interface MockConcert {
   status: string;
   thumbnail_url: string;
   description: string;
+  artist?: {
+    name?: string;
+    bio?: string;
+  };
 }
 
 export interface MockTicketType {
@@ -90,6 +94,10 @@ export const MOCK_CONCERTS: MockConcert[] = [
     status: 'published',
     thumbnail_url: 'https://images.unsplash.com/photo-1506157786151-b8491531f063?q=80&w=600&auto=format&fit=crop',
     description: 'Đêm nhạc hội tụ của những anh trai xuất sắc nhất chương trình truyền hình thực tế hot nhất mùa hè. Trải nghiệm âm thanh đỉnh cao cùng các màn trình diễn dàn dựng AI công phu.',
+    artist: {
+      name: 'HIEUTHUHAI',
+      bio: 'HIEUTHUHAI (tên thật Nguyễn Minh Hiếu, sinh năm 1999) là một trong những nam rapper nổi bật nhất tại Việt Nam hiện nay, bước ra từ bứt phá tại cuộc thi King of Rap 2020. Press Kit chính thức từ ban tổ chức ghi nhận anh là biểu tượng của thế hệ nghệ sĩ trẻ đa năng với khả năng tự sáng tác, trình diễn và định hình xu hướng âm nhạc phong cách hip hop kết hợp pop-rap hiện đại. Gemini 2.5 Flash đã phân tích tư liệu báo chí và tổng hợp: sự thành công vượt bậc của HIEUTHUHAI đến từ tư duy âm nhạc thời thượng, ngoại hình cuốn hút cùng các bản hit quốc dân như \'NGL\', \'Cua\', và gần đây nhất là quán quân tại chương trình thực tế Anh Trai Say Hi. Rapper Minh Hiếu sở hữu chất giọng trầm ấm, flow nhịp nhàng và ca từ thông minh, dí dỏm giúp anh kết nối mạnh mẽ với khán giả đại chúng. Đêm nhạc hội tụ lần này là cơ hội để anh tái hiện phong cách trình diễn bùng nổ, khẳng định vị thế thủ lĩnh thế hệ nghệ sĩ mới.',
+    },
   },
   {
     id: 'concert-2',
@@ -100,6 +108,10 @@ export const MOCK_CONCERTS: MockConcert[] = [
     status: 'published',
     thumbnail_url: 'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?q=80&w=600&auto=format&fit=crop',
     description: 'Sân khấu độc bản đánh dấu sự trở lại hoành tráng của nghệ sĩ hàng đầu Việt Nam. Một bữa tiệc nghệ thuật đầy bất ngờ kết hợp công nghệ ánh sáng hiện đại nhất.',
+    artist: {
+      name: 'Sơn Tùng M-TP',
+      bio: 'Sơn Tùng M-TP (tên thật Nguyễn Thanh Tùng, sinh năm 1994) là ca sĩ, nhạc sĩ kiêm nhà sản xuất âm nhạc hàng đầu Việt Nam, được mệnh danh là \'Hoàng tử Vpop\' với sức ảnh hưởng mang tầm quốc tế. Dựa trên Press Kit chính thức, Gemini 2.5 Flash tổng hợp tiểu sử nghệ sĩ: khởi đầu từ giới underground năm 2011, Sơn Tùng nhanh chóng vươn lên thành biểu tượng nhạc Pop đương đại thông qua hàng loạt bản hit phá vỡ mọi kỷ lục nhạc số như \'Cơn Mưa Ngang Qua\', \'Lạc Trôi\', \'Hãy Trao Cho Anh\' (kết hợp Snoop Dogg) và \'Chúng Ta Của Tương Lai\'. Âm nhạc của anh là sự giao thoa độc đáo giữa Pop, R&B và nhạc điện tử thời thượng, đi kèm hình ảnh và phong cách thời trang dẫn đầu xu hướng. Với khả năng làm chủ sân khấu hoàn hảo và tư duy nghệ thuật khác biệt, Sơn Tùng M-TP luôn mang đến những trải nghiệm nghe nhìn choáng ngợp cho khán giả. Đêm diễn Live Concert 2026 hứa hẹn sẽ là cột mốc đột phá tiếp theo trong sự nghiệp đỉnh cao của anh.',
+    },
   },
   {
     id: 'concert-3',
@@ -110,6 +122,10 @@ export const MOCK_CONCERTS: MockConcert[] = [
     status: 'published',
     thumbnail_url: 'https://images.unsplash.com/photo-1514525253161-7a46d19cd819?q=80&w=600&auto=format&fit=crop',
     description: 'Đêm tự sự mộc mạc và gần gũi với những bản hit quốc dân cùng dàn nhạc giao hưởng cổ điển kết hợp rap độc đáo.',
+    artist: {
+      name: 'Đen Vâu',
+      bio: 'Đen Vâu (tên thật Nguyễn Đức Cường, sinh năm 1989) là nam rapper thành công nhất của làn sóng Indie/Underground Việt Nam, nổi tiếng với phong cách rap mộc mạc, triết lý và đầy tính tự sự. Trích xuất từ Press Kit tự động bởi Gemini 2.5 Flash: Đen Vâu sở hữu lượng người hâm mộ khổng lồ nhờ ca từ giàu chất thơ, ví von sáng tạo và gần gũi với đời sống thường nhật của giới trẻ, thể hiện qua các tác phẩm huyền thoại như \'Đưa Nhau Đi Trốn\', \'Lối Nhỏ\', \'Trốn Tìm\', và \'Mang Tiền Về Cho Mẹ\'. Âm nhạc của Đen mang âm hưởng acoustic mộc mạc pha trộn hip-hop phóng khoáng, khơi gợi sự đồng cảm sâu sắc về cuộc sống, tình yêu và gia đình. Anh cũng là nghệ sĩ đầu tiên có nhiều MV đạt top 1 trending YouTube nhất Việt Nam. Đến với Live Concert lần này, Đen Vâu kết hợp với dàn nhạc giao hưởng, mang đến những bản phối đầy chất thơ và trải nghiệm cảm xúc độc bản dành cho người hâm mộ.',
+    },
   },
 ];
 
@@ -132,7 +148,7 @@ export const MOCK_TICKET_TYPES: Record<string, MockTicketType[]> = {
 
 // Global DB variables holding dynamic purchases during active run
 let mockOrders: MockOrder[] = [];
-let mockTickets: MockTicket[] = [];
+export let mockTickets: MockTicket[] = [];
 
 // Helper helper function to generate UUID
 const mockUUID = () => {
@@ -208,11 +224,22 @@ export const handleMockRequest = async (url: string, method: string, body?: any)
       };
     }
 
+    const header = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9';
+    const payloadObj = {
+      sub: matchedUser.id,
+      email: matchedUser.email,
+      app_metadata: { role: matchedUser.role },
+      user_metadata: { full_name: matchedUser.fullName }
+    };
+    const payloadBase64 = CryptoJS.enc.Base64.stringify(CryptoJS.enc.Utf8.parse(JSON.stringify(payloadObj)))
+      .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+    const dynamicToken = `${header}.${payloadBase64}.mock_signature`;
+
     return {
       status: 200,
       data: {
         success: true,
-        access_token: 'mock-access-token-jwt',
+        access_token: dynamicToken,
         refresh_token: 'mock-refresh-token-jwt',
         user: {
           id: matchedUser.id,
@@ -402,7 +429,7 @@ export const handleMockRequest = async (url: string, method: string, body?: any)
 
     order.target_status = targetStatusInput;
     order.poll_count = 0;
-    
+
     if (scenario === 'fail') {
       order.status = 'FAILED';
     }
@@ -505,6 +532,8 @@ export const handleMockRequest = async (url: string, method: string, body?: any)
         status: 200,
         data: {
           success: false,
+          result: 'INVALID',
+          message: 'Mã QR không tồn tại trong hệ thống.',
           data: {
             result: 'INVALID',
             message: 'Mã QR không tồn tại trong hệ thống.'
@@ -519,6 +548,8 @@ export const handleMockRequest = async (url: string, method: string, body?: any)
         status: 200,
         data: {
           success: false,
+          result: 'WRONG_CONCERT',
+          message: 'Vé này không thuộc concert đang diễn ra.',
           data: {
             result: 'WRONG_CONCERT',
             message: 'Vé này không thuộc concert đang diễn ra.'
@@ -533,6 +564,9 @@ export const handleMockRequest = async (url: string, method: string, body?: any)
         status: 200,
         data: {
           success: false,
+          result: 'ALREADY_USED',
+          used_at: matchedTicket.used_at || new Date().toISOString(),
+          used_by_staff: matchedTicket.used_by_staff || 'Staff Mock Portal',
           data: {
             result: 'ALREADY_USED',
             used_at: matchedTicket.used_at || new Date().toISOString(),
@@ -551,6 +585,11 @@ export const handleMockRequest = async (url: string, method: string, body?: any)
       status: 200,
       data: {
         success: true,
+        result: 'SUCCESS',
+        ticket_id: matchedTicket.ticket_id,
+        holder_name: matchedTicket.holder_name,
+        ticket_type: matchedTicket.ticket_type,
+        checked_in_at: matchedTicket.used_at,
         data: {
           result: 'SUCCESS',
           ticket_id: matchedTicket.ticket_id,
@@ -566,7 +605,7 @@ export const handleMockRequest = async (url: string, method: string, body?: any)
   const statsMatch = path.match(/^\/checkin\/stats\/([a-zA-Z0-9-]+)$/);
   if (statsMatch) {
     const concertId = statsMatch[1];
-    
+
     // Increment mock offsets to simulate background entries
     if (!mockConcertOffsets[concertId]) {
       mockConcertOffsets[concertId] = 0;
@@ -583,12 +622,12 @@ export const handleMockRequest = async (url: string, method: string, body?: any)
       // Find sold tickets for this type
       const soldTickets = mockTickets.filter(mt => mt.concert_id === concertId && mt.ticket_type === t.name);
       const ticketTotal = soldTickets.length + t.available_seats; // total is sold + remaining available
-      
+
       let ticketCheckedIn = soldTickets.filter(mt => mt.used).length;
-      
+
       // Add simulated entries, making sure it doesn't exceed the total seats
       const simulatedExtra = Math.min(
-        offset + (idx * 3), 
+        offset + (idx * 3),
         t.available_seats
       );
       ticketCheckedIn += simulatedExtra;
@@ -620,11 +659,11 @@ export const handleMockRequest = async (url: string, method: string, body?: any)
     };
   }
 
-  return { 
-    status: 404, 
-    data: { 
-      success: false, 
-      message: `API Route Mock Not Found: [${normalizedMethod}] ${path}` 
-    } 
+  return {
+    status: 404,
+    data: {
+      success: false,
+      message: `API Route Mock Not Found: [${normalizedMethod}] ${path}`
+    }
   };
 };

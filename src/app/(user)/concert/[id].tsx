@@ -84,6 +84,13 @@ export default function ConcertDetailScreen() {
           </>
         )}
 
+        {concert.artist?.bio && (
+          <>
+            <ThemedText type="subtitle" style={styles.sectionTitle}>Thông Tin Nghệ Sĩ (AI Bio)</ThemedText>
+            <ThemedText style={styles.artistBio}>{concert.artist.bio}</ThemedText>
+          </>
+        )}
+
         <ThemedText type="subtitle" style={styles.sectionTitle}>Sơ Đồ Ghế Ngồi & Vé</ThemedText>
         <ThemedText style={styles.hintText} themeColor="textSecondary">
           * Chọn một phân khu trên sơ đồ để xem thông tin chi tiết và đặt vé.
@@ -205,6 +212,12 @@ const styles = StyleSheet.create({
   description: {
     fontSize: 14.5,
     lineHeight: 22,
+  },
+  artistBio: {
+    fontSize: 14.5,
+    lineHeight: 22.5,
+    marginTop: Spacing.one,
+    textAlign: 'justify',
   },
   hintText: {
     fontSize: 12,
