@@ -151,16 +151,17 @@ apiClient.interceptors.response.use(
         // Use a separate axios instance or configuration to avoid interceptor loop
         const response = await axios.post<{
           success: boolean;
-          access_token: string;
+          accessToken?: string;
+          access_token?: string;
+          refreshToken?: string;
           refresh_token?: string;
-        }>(`${API_URL}/users/refresh-token`, {
-          refresh_token: refreshToken,
+        }>(`${API_URL}/auth/refresh-token`, {
+          refreshToken: refreshToken,
         });
 
-        if (response.data && response.data.access_token) {
-          const newAccessToken = response.data.access_token;
-          // Refresh token might also be rotated
-          const newRefreshToken = response.data.refresh_token || refreshToken;
+        const newAccessToken = response.data.accessToken || response.data.access_token;
+        if (response.data && newAccessToken) {
+          const newRefreshToken = response.data.refreshToken || response.data.refresh_token || refreshToken;
 
           // Save new tokens securely
           await storage.setAccessToken(newAccessToken);

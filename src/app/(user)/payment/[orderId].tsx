@@ -17,8 +17,8 @@ export default function PaymentScreen() {
   const [polling, setPolling] = useState(false);
   const [mockScenario, setMockScenario] = useState<string | null>(null);
   
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const pollingRef = useRef<NodeJS.Timeout | null>(null);
+  const timerRef = useRef<any>(null);
+  const pollingRef = useRef<any>(null);
 
   // Countdown timer expiration handler
   const handleExpiration = () => {

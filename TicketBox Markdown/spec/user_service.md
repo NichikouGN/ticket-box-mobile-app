@@ -47,6 +47,7 @@ Ngoài chức năng quản lý dữ liệu người dùng, User Service còn ph�
 **Query Parameters:** `page`, `limit`, `role`, `status` (`active` / `banned`)
 
 **Phản hồi (200 OK):**
+
 ```json
 {
   "success": true,
@@ -71,14 +72,17 @@ Ngoài chức năng quản lý dữ liệu người dùng, User Service còn ph�
 **Endpoint:** `PATCH /api/v1/organizer/users/:user_id/status`
 
 **Headers:**
+
 - `Authorization: Bearer <JWT_Token>`
 
 **Request Body:**
+
 ```json
 { "status": "banned", "reason": "Vi phạm chính sách mua vé" }
 ```
 
 **Phản hồi (200 OK):**
+
 ```json
 { "success": true, "message": "Tài khoản đã được cập nhật trạng thái." }
 ```
@@ -90,14 +94,17 @@ Ngoài chức năng quản lý dữ liệu người dùng, User Service còn ph�
 **Endpoint:** `PATCH /api/v1/organizer/users/:user_id/role`
 
 **Headers:**
+
 - `Authorization: Bearer <JWT_Token>`
 
 **Request Body:**
+
 ```json
 { "role": "staff" }
 ```
 
 **Phản hồi (200 OK):**
+
 ```json
 { "success": true, "message": "Role đã được cập nhật." }
 ```
@@ -108,17 +115,20 @@ Ngoài chức năng quản lý dữ liệu người dùng, User Service còn ph�
 
 #### API 1 [USER]: Tạo tài khoản
 
-**Endpoint:** `POST /api/v1/users/sign-up`
+**Endpoint:** `POST /api/v1/auth/sign-up`
 
 **Request Body:**
+
 ```json
 {
-  "username": "abcd",
-  "password": "12345678"
+  "email": "user@example.com",
+  "password": "password123",
+  "fullName": "Nguyễn Văn A"
 }
 ```
 
 **Phản hồi (201 Created):**
+
 ```json
 {
   "success": true,
@@ -130,23 +140,25 @@ Ngoài chức năng quản lý dữ liệu người dùng, User Service còn ph�
 
 #### API 2 [USER]: Đăng nhập
 
-**Endpoint:** `POST /api/v1/users/sign-in`
+**Endpoint:** `POST /api/v1/auth/sign-in`
 
 **Request Body:**
+
 ```json
 {
-  "username": "abcd",
-  "password": "12345678"
+  "email": "user@example.com",
+  "password": "password123"
 }
 ```
 
 **Phản hồi (200 OK):**
+
 ```json
 {
   "success": true,
   "message": "Đăng nhập thành công",
-  "access_token": "9QkzlXYDJXMREjJvJ1zD5IjHULCFlb4MyMY4ILdWtAe0mTgj5trOZOxYIqX0kwXQ",
-  "refresh_token": "i2IQM5uhL1iQz2YlbVHpMh9bKaMjZflJywaeqAhJlfyWex96uTQY3yvsVpKhUWbD"
+  "accessToken": "9QkzlXYDJXMREjJvJ1zD5IjHULCFlb4MyMY4ILdWtAe0mTgj5trOZOxYIqX0kwXQ",
+  "refreshToken": "i2IQM5uhL1iQz2YlbVHpMh9bKaMjZflJywaeqAhJlfyWex96uTQY3yvsVpKhUWbD"
 }
 ```
 

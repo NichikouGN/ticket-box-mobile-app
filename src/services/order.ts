@@ -23,15 +23,18 @@ export const orderService = {
   },
 
   async createOrder(items: OrderItem[], idempotencyKey: string): Promise<BookingResponse> {
-    // Map items from camelCase to snake_case for backend compatibility
+    // Map items using camelCase for backend Zod schema
     const rawData = items.map(item => ({
-      concert_id: item.concertId,
-      ticket_type_id: item.ticketTypeId,
+      concertId: item.concertId,
+      ticketTypeId: item.ticketTypeId,
       quantity: item.quantity,
     }));
 
     const response = await apiClient.post<RawBookingResponse>('/orders', 
-      { data: rawData },
+      { 
+        paymentMethod: 'momo',
+        data: rawData 
+      },
       {
         headers: {
           'Idempotency-Key': idempotencyKey,
@@ -40,7 +43,7 @@ export const orderService = {
     );
 
     const resData = response.data;
-    const orderId = resData.data.order_id;
+    const orderId = resData.data.order_id || (resData.data as any).orderId;
 
     // Online Mode - defensive payment_id discovery
     if (!isMock() && orderId) {
@@ -75,8 +78,8 @@ export const orderService = {
       success: resData.success,
       message: resData.message,
       orderId: orderId,
-      totalPrice: resData.data.total_price,
-      paymentDeadline: resData.data.payment_deadline,
+      totalPrice: resData.data.total_price ?? (resData.data as any).totalPrice ?? (resData.data as any).totalAmount ?? 0,
+      paymentDeadline: resData.data.payment_deadline || (resData.data as any).paymentDeadline || '',
     };
   },
 

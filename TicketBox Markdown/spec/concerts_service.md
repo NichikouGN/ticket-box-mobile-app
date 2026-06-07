@@ -4,10 +4,10 @@
 
 ### Phạm vi
 
-| Vai trò | Quyền hạn |
-|---|---|
-| **Organizer** | Cho phép organizer thêm, xóa concert. Cập nhật các thông tin về concert như ảnh bìa, thời gian, vị trí, các khách mời |
-| **User** | Cho phép User xem thông tin về concert gồm ảnh, thời gian, vị trí, khách mời. Cho phép xem các loại vé (GA, SVIP, VIP, CAT1, CAT2) và số lượng còn lại của từng loại |
+| Vai trò       | Quyền hạn                                                                                                                                                            |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Organizer** | Cho phép organizer thêm, xóa concert. Cập nhật các thông tin về concert như ảnh bìa, thời gian, vị trí, các khách mời                                                |
+| **User**      | Cho phép User xem thông tin về concert gồm ảnh, thời gian, vị trí, khách mời. Cho phép xem các loại vé (GA, SVIP, VIP, CAT1, CAT2) và số lượng còn lại của từng loại |
 
 ### Yêu cầu hiệu năng
 
@@ -31,14 +31,17 @@ Thiết kế cho các tác vụ Read-Heavy. Phải chịu tối thiểu 5,000 RP
 **Endpoint:** `GET /api/v1/concerts`
 
 **Headers:**
+
 - `Origin`: Cần thiết cho CORS
 - `User-Agent`: Cho backend tối ưu payload cho web và mobile
 
 **Query Parameters:**
+
 - `page`: số nguyên (mặc định 1)
 - `limit`: số nguyên (mặc định 10)
 
 **Phản hồi thành công (200 OK):**
+
 ```json
 {
   "success": true,
@@ -48,15 +51,15 @@ Thiết kế cho các tác vụ Read-Heavy. Phải chịu tối thiểu 5,000 RP
       "title": "Anh Trai Say Hi - Đêm Đỉnh Cao",
       "artists": ["HIEUTHUHAI", "Rhyder", "Captain"],
       "venue": "Sân vận động Quân khu 7, TP.HCM",
-      "start_time": "2026-07-15T19:00:00Z",
+      "eventDate": "2026-07-15T19:00:00Z",
       "status": "UPCOMING",
-      "thumbnail_url": "https://cdn.ticketbox.vn/images/concert1.jpg"
+      "thumbnailUrl": "https://cdn.ticketbox.vn/images/concert1.jpg"
     }
   ],
-  "Pagination": {
-    "current_page": 1,
-    "total_page": 5,
-    "total_items": 42
+  "pagination": {
+    "currentPage": 1,
+    "totalPage": 5,
+    "totalItems": 42
   }
 }
 ```
@@ -68,10 +71,12 @@ Thiết kế cho các tác vụ Read-Heavy. Phải chịu tối thiểu 5,000 RP
 **Endpoint:** `GET /api/v1/concerts/:id`
 
 **Headers:**
+
 - `Origin`: Cần thiết cho CORS
 - `User-Agent`: Cho backend tối ưu payload cho web và mobile
 
 **Phản hồi thành công (200 OK):**
+
 ```json
 {
   "success": true,
@@ -81,7 +86,9 @@ Thiết kế cho các tác vụ Read-Heavy. Phải chịu tối thiểu 5,000 RP
     "description": "Bản tóm tắt nghệ sĩ tạo bởi AI...",
     "artists": ["HIEUTHUHAI", "Rhyder"],
     "venue": "Sân vận động Quân khu 7, TP.HCM",
-    "start_time": "2026-07-15T19:00:00Z"
+    "eventDate": "2026-07-15T19:00:00Z",
+    "thumbnailUrl": "https://cdn.ticketbox.vn/images/concert1.jpg",
+    "seatMapSvgUrl": "https://cdn.ticketbox.vn/maps/qk7-layout.svg"
   }
 }
 ```
@@ -93,29 +100,29 @@ Thiết kế cho các tác vụ Read-Heavy. Phải chịu tối thiểu 5,000 RP
 **Endpoint:** `GET /api/v1/concerts/:id/tickets`
 
 **Headers:**
+
 - `Origin`: Cần thiết cho CORS
 - `User-Agent`: Cho backend tối ưu payload cho web và mobile
 
 **Phản hồi thành công (200 OK):**
+
 ```json
 {
   "success": true,
   "data": {
-    "seat_map_svg_url": "https://cdn.ticketbox.vn/maps/qk7-layout.svg",
-    "ticket_types": [
+    "seatMapSvgUrl": "https://cdn.ticketbox.vn/maps/qk7-layout.svg",
+    "ticketTypes": [
       {
         "id": "t1a2b3c4-d5e6-7f8g-9h0i-j1k2l3m4n5o6",
         "name": "SVIP",
         "price": 3500000,
-        "max_per_user": 2,
-        "available_seats": 145
+        "maxPerUser": 2
       },
       {
         "id": "t9z8y7x6-w5v4-u3t2-s1r0-q9p8o7n6m5l4",
         "name": "GA",
         "price": 800000,
-        "max_per_user": 4,
-        "available_seats": 2301
+        "maxPerUser": 4
       }
     ]
   }
@@ -129,30 +136,24 @@ Thiết kế cho các tác vụ Read-Heavy. Phải chịu tối thiểu 5,000 RP
 **Endpoint:** `GET /api/v1/concerts/:id/stock`
 
 **Headers:**
+
 - `Origin`: Cần thiết cho CORS
 
 **Phản hồi thành công (200 OK):**
+
 ```json
 {
   "success": true,
-  "data": {
-    "ticket_types": [
-      {
-        "id": "t1a2b3c4-d5e6-7f8g-9h0i-j1k2l3m4n5o6",
-        "name": "SVIP",
-        "price": 3500000,
-        "total_quantity": 200,
-        "sold_quantity": 5
-      },
-      {
-        "id": "t9z8y7x6-w5v4-u3t2-s1r0-q9p8o7n6m5l4",
-        "name": "GA",
-        "price": 800000,
-        "total_quantity": 2000,
-        "sold_quantity": 678
-      }
-    ]
-  }
+  "data": [
+    {
+      "id": "t1a2b3c4-d5e6-7f8g-9h0i-j1k2l3m4n5o6",
+      "stock": 145
+    },
+    {
+      "id": "t9z8y7x6-w5v4-u3t2-s1r0-q9p8o7n6m5l4",
+      "stock": 2301
+    }
+  ]
 }
 ```
 
@@ -163,32 +164,35 @@ Thiết kế cho các tác vụ Read-Heavy. Phải chịu tối thiểu 5,000 RP
 **Endpoint:** `POST /api/v1/organizer/concerts`
 
 **Headers:**
+
 - `Authentication: Bearer <JWT_Token>`
 - `Content-Type: application/json`
 
 **Request Body:**
+
 ```json
 {
   "title": "Anh Trai Say Hi - Đêm Đỉnh Cao",
   "description": "Bản tóm tắt nghệ sĩ...",
   "artists": ["HIEUTHUHAI", "Rhyder", "Captain"],
   "venue": "Sân vận động Quân khu 7, TP.HCM",
-  "start_time": "2026-07-15T19:00:00Z",
-  "thumbnail_url": "https://cdn.ticketbox.vn/images/concert1.jpg",
-  "seat_map_svg_url": "https://cdn.ticketbox.vn/maps/qk7-layout.svg",
-  "ticket_types": [
-    { "name": "SVIP", "price": 3500000, "max_per_user": 2, "total_capacity": 200 },
-    { "name": "GA", "price": 800000, "max_per_user": 4, "total_capacity": 5000 }
+  "eventDate": "2026-07-15T19:00:00Z",
+  "thumbnailUrl": "https://cdn.ticketbox.vn/images/concert1.jpg",
+  "seatMapSvgUrl": "https://cdn.ticketbox.vn/maps/qk7-layout.svg",
+  "ticketTypes": [
+    { "name": "SVIP", "price": 3500000, "maxPerUser": 2, "totalCapacity": 200 },
+    { "name": "GA", "price": 800000, "maxPerUser": 4, "totalCapacity": 5000 }
   ]
 }
 ```
 
 **Phản hồi thành công (201 Created):**
+
 ```json
 {
   "success": true,
   "message": "Concert created successfully",
-  "data": { "concert_id": "c3b07384-d113-4e31-92f7-e43598d9e2d3" }
+  "data": { "concertId": "c3b07384-d113-4e31-92f7-e43598d9e2d3" }
 }
 ```
 
@@ -199,10 +203,12 @@ Thiết kế cho các tác vụ Read-Heavy. Phải chịu tối thiểu 5,000 RP
 **Endpoint:** `PATCH /api/v1/organizer/concerts/:{concert_id}`
 
 **Headers:**
+
 - `Authentication: Bearer <JWT_Token>`
 - `Content-Type: application/json`
 
 **Request Body:**
+
 ```json
 {
   "title": "Anh Trai Say Hi - Đêm Đỉnh Cao",
@@ -211,6 +217,7 @@ Thiết kế cho các tác vụ Read-Heavy. Phải chịu tối thiểu 5,000 RP
 ```
 
 **Phản hồi thành công (200 OK):**
+
 ```json
 {
   "success": true,
@@ -225,11 +232,13 @@ Thiết kế cho các tác vụ Read-Heavy. Phải chịu tối thiểu 5,000 RP
 **Endpoint:** `PATCH /api/v1/organizer/concerts/:concert_id/cancel`
 
 **Request Body:**
+
 ```json
 { "reason": "Nghệ sĩ không thể tham dự" }
 ```
 
 **Phản hồi (200 OK):**
+
 ```json
 { "success": true, "message": "Concert đã bị hủy. Thông báo đang được gửi đến người dùng." }
 ```

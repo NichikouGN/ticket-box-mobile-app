@@ -50,7 +50,9 @@ example
 summarize.py
 EDGE_CASES_TEST_GUIDE.md
 INTEGRATION_GUIDE.md
+.agents/
 
 # Document
 TicketBox Markdown/backend-document/
 TicketBox Markdown/web-document/
+TicketBox Markdown/ticket-box-backend-code/

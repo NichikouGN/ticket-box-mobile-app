@@ -41,7 +41,7 @@ export function parseJWT(token: string): any {
 
 export const authService = {
   async signIn(usernameOrEmail: string, password: string): Promise<SignInResponse> {
-    const response = await apiClient.post<RawSignInResponse>('/users/sign-in', {
+    const response = await apiClient.post<RawSignInResponse>('/auth/sign-in', {
       username: usernameOrEmail,
       email: usernameOrEmail,
       password,
@@ -49,19 +49,21 @@ export const authService = {
 
     const rawData = response.data;
     
-    // Support both access_token and jwt_token from backend
-    const accessToken = rawData.access_token || (rawData as any).jwt_token;
-    const refreshToken = rawData.refresh_token || (rawData as any).refresh_token || accessToken;
+    // Support both accessToken and access_token from backend
+    const accessToken = rawData.accessToken || rawData.access_token || (rawData as any).jwt_token;
+    const refreshToken = rawData.refreshToken || rawData.refresh_token || accessToken;
     
     // Parse JWT to extract role/email details directly if available (compatible with Supabase Auth)
     const jwtPayload = parseJWT(accessToken);
     
     let role: UserRole = 'audience';
     if (jwtPayload) {
-      const jwtRole = jwtPayload.user_role || 
+      const rawRole = jwtPayload.role ||
+                      jwtPayload.user_role || 
                       jwtPayload.app_metadata?.role || 
-                      jwtPayload.user_metadata?.role || 
-                      (jwtPayload.role !== 'authenticated' ? jwtPayload.role : null);
+                      jwtPayload.user_metadata?.role;
+      
+      const jwtRole = typeof rawRole === 'string' ? rawRole.toLowerCase() : null;
       
       if (jwtRole === 'staff' || jwtRole === 'audience' || jwtRole === 'organizer') {
         role = jwtRole as UserRole;
@@ -70,7 +72,9 @@ export const authService = {
       }
     } else {
       // Fallback to raw response details or email username check
-      role = (rawData.user?.role as UserRole) || 
+      const rawRole = rawData.user?.role;
+      const fallbackRole = typeof rawRole === 'string' ? rawRole.toLowerCase() : null;
+      role = (fallbackRole as UserRole) || 
         (usernameOrEmail.toLowerCase().includes('staff') ? 'staff' : 'audience');
     }
     
@@ -86,7 +90,7 @@ export const authService = {
       accessToken: accessToken,
       refreshToken: refreshToken,
       user: {
-        id: jwtPayload?.sub || rawData.user?.id || 'mock-id',
+        id: jwtPayload?.userId || jwtPayload?.sub || rawData.user?.id || 'mock-id',
         email: email,
         fullName: fullName,
         role: role,
@@ -103,17 +107,10 @@ export const authService = {
   },
 
   async signUp(email: string, password: string, fullName: string): Promise<SignUpResponse> {
-    const response = await apiClient.post<SignUpResponse>('/users/sign-up', {
-      username: email,
+    const response = await apiClient.post<SignUpResponse>('/auth/sign-up', {
       email,
       password,
-      fullName,
-      full_name: fullName,
-      options: {
-        data: {
-          full_name: fullName,
-        }
-      }
+      fullName
     });
     return response.data;
   },

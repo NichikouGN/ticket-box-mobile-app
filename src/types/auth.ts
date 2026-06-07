@@ -24,12 +24,15 @@ export interface SignUpResponse {
 export interface RawSignInResponse {
   success: boolean;
   message: string;
-  access_token: string;
-  refresh_token: string;
+  access_token?: string;
+  refresh_token?: string;
+  accessToken?: string;
+  refreshToken?: string;
   user?: {
     id: string;
     email: string;
     full_name: string;
+    fullName?: string;
     role: string;
     status: string;
   };

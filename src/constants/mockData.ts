@@ -206,7 +206,7 @@ export const handleMockRequest = async (url: string, method: string, body?: any)
   const normalizedMethod = method.toUpperCase();
 
   // Auth logins
-  if ((path === '/auth/login' || path === '/users/sign-in') && normalizedMethod === 'POST') {
+  if ((path === '/auth/login' || path === '/users/sign-in' || path === '/auth/sign-in') && normalizedMethod === 'POST') {
     const userEmail = body?.email || body?.username || '';
     const userPassword = body?.password || '';
 
@@ -227,7 +227,9 @@ export const handleMockRequest = async (url: string, method: string, body?: any)
     const header = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9';
     const payloadObj = {
       sub: matchedUser.id,
+      userId: matchedUser.id,
       email: matchedUser.email,
+      role: matchedUser.role.toUpperCase(),
       app_metadata: { role: matchedUser.role },
       user_metadata: { full_name: matchedUser.fullName }
     };
@@ -239,12 +241,15 @@ export const handleMockRequest = async (url: string, method: string, body?: any)
       status: 200,
       data: {
         success: true,
+        accessToken: dynamicToken,
         access_token: dynamicToken,
+        refreshToken: 'mock-refresh-token-jwt',
         refresh_token: 'mock-refresh-token-jwt',
         user: {
           id: matchedUser.id,
           email: matchedUser.email,
           full_name: matchedUser.fullName,
+          fullName: matchedUser.fullName,
           role: matchedUser.role,
           status: matchedUser.status,
         },
@@ -253,7 +258,7 @@ export const handleMockRequest = async (url: string, method: string, body?: any)
   }
 
   // Register (Sign-up)
-  if ((path === '/auth/register' || path === '/users/sign-up') && normalizedMethod === 'POST') {
+  if ((path === '/auth/register' || path === '/users/sign-up' || path === '/auth/sign-up') && normalizedMethod === 'POST') {
     const regEmail = body?.email || body?.username || '';
     const regPassword = body?.password || '';
     const regFullName = body?.fullName || body?.full_name || 'New Audience User';
@@ -357,8 +362,8 @@ export const handleMockRequest = async (url: string, method: string, body?: any)
     let totalPrice = 0;
     const pendingTickets: MockTicket[] = [];
 
-    // Find concert
-    const concertId = items[0].concert_id;
+    // Find concert supporting both camelCase and snake_case
+    const concertId = items[0].concertId || items[0].concert_id;
     const concert = MOCK_CONCERTS.find(c => c.id === concertId);
     const concertTitle = concert?.title || 'Concert Event';
     const eventDate = concert?.start_time || new Date().toISOString();
@@ -366,7 +371,8 @@ export const handleMockRequest = async (url: string, method: string, body?: any)
 
     items.forEach((item: any) => {
       const typeList = MOCK_TICKET_TYPES[concertId] || [];
-      const ticketTypeObj = typeList.find(t => t.id === item.ticket_type_id);
+      const ticketTypeId = item.ticketTypeId || item.ticket_type_id;
+      const ticketTypeObj = typeList.find(t => t.id === ticketTypeId);
       if (ticketTypeObj) {
         totalPrice += ticketTypeObj.price * item.quantity;
 

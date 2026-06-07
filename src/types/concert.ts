@@ -44,9 +44,11 @@ export interface RawConcert {
   title: string;
   artists: string[];
   venue: string;
-  start_time: string;
+  start_time?: string;
+  eventDate?: string;
   status: string;
-  thumbnail_url: string;
+  thumbnail_url?: string;
+  thumbnailUrl?: string;
   description?: string;
   artist?: {
     name?: string;
