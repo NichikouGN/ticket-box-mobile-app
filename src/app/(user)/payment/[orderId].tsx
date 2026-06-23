@@ -6,10 +6,13 @@ import { Spacing } from '@/constants/theme';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { orderService } from '@/services/order';
 import { PaymentDetails } from '@/types/order';
+import * as WebBrowser from 'expo-web-browser';
+import { useTheme } from '@/hooks/use-theme';
 
 export default function PaymentScreen() {
   const { orderId } = useLocalSearchParams<{ orderId: string }>();
   const router = useRouter();
+  const theme = useTheme();
   const [loading, setLoading] = useState(true);
   const [paymentDetails, setPaymentDetails] = useState<PaymentDetails | null>(null);
   const [timeLeft, setTimeLeft] = useState(600); // 10 minutes fallback
@@ -42,9 +45,12 @@ export default function PaymentScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [timeLeft]);
 
-  // Fetch initial payment details
+  // Fetch initial payment details and subscribe to updates
   useEffect(() => {
-    const loadPaymentDetails = async () => {
+    let sseCleanup: (() => void) | null = null;
+    const USE_MOCK = process.env.EXPO_PUBLIC_USE_MOCK === 'true';
+
+    const loadPaymentDetailsMock = async () => {
       if (!orderId) return;
       try {
         const details = await orderService.getPaymentStatus(orderId);
@@ -68,13 +74,61 @@ export default function PaymentScreen() {
       }
     };
 
-    loadPaymentDetails();
+    if (USE_MOCK) {
+      loadPaymentDetailsMock();
+    } else {
+      if (orderId) {
+        sseCleanup = orderService.subscribeOrderSSE(
+          orderId,
+          (event) => {
+            if (event.event === 'ORDER_UPDATED') {
+              const data = event.data;
+              
+              setPaymentDetails({
+                paymentId: data.paymentId || 'pay-' + orderId,
+                orderId: orderId as string,
+                status: data.status,
+                amount: data.totalPrice || 0,
+                paymentRef: data.paymentRef || 'TXN-PENDING',
+                processedAt: data.paymentDeadline || new Date().toISOString(),
+                paymentUrl: data.paymentUrl || undefined,
+              });
+              setLoading(false);
+
+              if (data.paymentDeadline) {
+                const deadline = new Date(data.paymentDeadline).getTime();
+                const now = Date.now();
+                const diff = Math.max(0, Math.floor((deadline - now) / 1000));
+                setTimeLeft(diff);
+              }
+
+              // Handle automatic navigation based on status changes
+              if (data.status === 'COMPLETED' || data.status === 'SUCCESS') {
+                Alert.alert('Thành Công', 'Thanh toán thành công! Vé của bạn đã được phát hành.', [
+                  { text: 'Xem Vé', onPress: () => router.replace('/(user)/(tabs)/tickets') }
+                ]);
+              } else if (data.status === 'FAILED') {
+                Alert.alert('Thất Bại', 'Đơn hàng hoặc thanh toán thất bại.');
+              } else if (data.status === 'EXPIRED') {
+                Alert.alert('Hết Giờ', 'Đơn hàng của bạn đã hết hạn.');
+                router.replace('/(user)/(tabs)');
+              }
+            }
+          },
+          (err) => {
+            console.error('SSE connection error:', err);
+            setLoading(false);
+          }
+        );
+      }
+    }
 
     return () => {
       if (timerRef.current) clearInterval(timerRef.current);
       if (pollingRef.current) clearInterval(pollingRef.current);
+      if (sseCleanup) sseCleanup();
     };
-  }, [orderId]);
+  }, [orderId, router]);
 
   // Start polling backend status
   const startPolling = () => {
@@ -87,7 +141,7 @@ export default function PaymentScreen() {
         const details = await orderService.getPaymentStatus(orderId);
         setPaymentDetails(details);
         
-        if (details.status === 'SUCCESS') {
+        if (details.status === 'SUCCESS' || details.status === 'COMPLETED') {
           if (pollingRef.current) clearInterval(pollingRef.current);
           setPolling(false);
           setPaying(false);
@@ -147,6 +201,17 @@ export default function PaymentScreen() {
     }
   };
 
+  const handleOpenPaymentUrl = async () => {
+    if (paymentDetails?.paymentUrl) {
+      try {
+        await WebBrowser.openBrowserAsync(paymentDetails.paymentUrl);
+      } catch (err) {
+        console.error('Failed to open payment URL in WebBrowser', err);
+        Alert.alert('Lỗi', 'Không thể mở cổng thanh toán. Hãy thử lại.');
+      }
+    }
+  };
+
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -156,7 +221,7 @@ export default function PaymentScreen() {
   if (loading || !paymentDetails) {
     return (
       <ThemedView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#000" />
+        <ActivityIndicator size="large" color={theme.text} />
       </ThemedView>
     );
   }
@@ -181,7 +246,7 @@ export default function PaymentScreen() {
         )}
       </ThemedView>
 
-      {paymentDetails.status === 'PENDING' && !paying && (
+      {(paymentDetails.status === 'PENDING' || paymentDetails.status === 'PENDING_PAYMENT') && !paying && !paymentDetails.paymentUrl && (
         <ThemedView style={styles.scenariosContainer}>
           <ThemedText style={styles.scenariosTitle}>Chọn kịch bản thanh toán (Mock Gateway):</ThemedText>
           
@@ -208,9 +273,34 @@ export default function PaymentScreen() {
         </ThemedView>
       )}
 
+      {(paymentDetails.status === 'PENDING_PAYMENT') && paymentDetails.paymentUrl && (
+        <ThemedView style={styles.scenariosContainer}>
+          <ThemedText style={styles.scenariosTitle}>Nhấn vào liên kết để tiến hành thanh toán:</ThemedText>
+          
+          <Pressable
+            onPress={handleOpenPaymentUrl}
+            style={[styles.payButton, { backgroundColor: '#0052cc' }]}
+          >
+            <ThemedText style={styles.payButtonText}>💳 Thanh Toán Qua Cổng Stripe/Momo</ThemedText>
+          </Pressable>
+        </ThemedView>
+      )}
+
+      {paymentDetails.status === 'PROCESSING' && (
+        <ThemedView style={styles.processingCard}>
+          <ActivityIndicator size="large" color={theme.text} />
+          <ThemedText style={styles.processingText}>
+            Đang khởi tạo giao dịch thanh toán...
+          </ThemedText>
+          <ThemedText style={styles.pollingHint} themeColor="textSecondary">
+            Hệ thống đang liên kết với cổng thanh toán bảo mật. Vui lòng giữ kết nối.
+          </ThemedText>
+        </ThemedView>
+      )}
+
       {paying && (
         <ThemedView style={styles.processingCard}>
-          <ActivityIndicator size="large" color="#000" />
+          <ActivityIndicator size="large" color={theme.text} />
           <ThemedText style={styles.processingText}>
             {mockScenario === 'timeout'
               ? 'Đang kết nối cổng thanh toán...'
@@ -224,7 +314,7 @@ export default function PaymentScreen() {
         </ThemedView>
       )}
 
-      {paymentDetails.status === 'SUCCESS' && (
+      {(paymentDetails.status === 'SUCCESS' || paymentDetails.status === 'COMPLETED') && (
         <ThemedView style={styles.successMessage}>
           <ThemedText style={styles.successText}>🎉 Đơn hàng đã được thanh toán thành công!</ThemedText>
         </ThemedView>

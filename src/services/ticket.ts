@@ -22,7 +22,7 @@ export const ticketService = {
   },
 
   async getTicketDetail(ticketId: string): Promise<Ticket> {
-    const response = await apiClient.get<{ success: boolean; data: RawTicket }>(`/tickets/${ticketId}`);
+    const response = await apiClient.get<{ success: boolean; data: RawTicket }>(`/tickets/tickets/${ticketId}`);
     return mapTicket(response.data.data);
   },
 };

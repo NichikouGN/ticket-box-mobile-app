@@ -16,7 +16,7 @@ export interface BookingResponse {
   paymentDeadline: string;
 }
 
-export type PaymentStatus = 'PENDING' | 'SUCCESS' | 'FAILED' | 'EXPIRED';
+export type PaymentStatus = 'PENDING' | 'PENDING_PAYMENT' | 'PROCESSING' | 'SUCCESS' | 'COMPLETED' | 'FAILED' | 'EXPIRED';
 
 export interface PaymentDetails {
   paymentId: string;
@@ -25,6 +25,7 @@ export interface PaymentDetails {
   amount: number;
   paymentRef: string;
   processedAt: string;
+  paymentUrl?: string;
 }
 
 // Raw backend structures
