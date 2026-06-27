@@ -1,32 +1,38 @@
 export interface RawTicket {
-  ticket_id: string;
-  concert_title: string;
-  event_date: string;
-  venue: string;
-  ticket_type: string;
-  holder_name: string;
-  qr_aes256?: string;
-  qr_raw?: string;
-  used: boolean;
+  id: string;
+  concert_id: string;
+  ticket_type_id: string;
+  status: string;
+  created_at: string;
+  used_at: string | null;
 }
 
 export interface Ticket {
   ticketId: string;
-  concertTitle: string;
-  eventDate: string;
-  venue: string;
-  ticketType: string;
-  holderName: string;
-  qrAes256: string;
-  used: boolean;
+  concertId: string;
+  ticketTypeId: string;
+  status: string;
+  createdAt: string;
+  usedAt: string | null;
+}
+
+export interface TicketPayload {
+  ticket: {
+    ticketId: string;
+    userId: string;
+    concertId: string;
+    ticketTypeId: string;
+  };
+  signature: string;
 }
 
 export interface TicketListResponse {
   success: boolean;
-  data: Ticket[];
+  data: RawTicket[];
 }
 
 export interface TicketDetailResponse {
   success: boolean;
-  data: Ticket;
+  data: TicketPayload;
 }
+

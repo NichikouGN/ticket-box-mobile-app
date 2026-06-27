@@ -8,7 +8,6 @@ import { concertService } from '@/services/concert';
 import { CheckinResult } from '@/types/checkin';
 import { Concert } from '@/types/concert';
 import { CameraView, useCameraPermissions } from 'expo-camera';
-import * as Crypto from 'expo-crypto';
 import { Stack, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Linking, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
@@ -21,6 +20,12 @@ export default function ScannerScreen() {
   const [concerts, setConcerts] = useState<Concert[]>([]);
   const [loadingConcerts, setLoadingConcerts] = useState(true);
   const [selectedConcert, setSelectedConcert] = useState<{ id: string; title: string } | null>(null);
+  
+  const [publicKey, setPublicKey] = useState<string>('');
+  const [manualInput, setManualInput] = useState('');
+  const [scanning, setScanning] = useState(true);
+  const [verifying, setVerifying] = useState(false);
+  const [scanResult, setScanResult] = useState<CheckinResult | null>(null);
 
   const handlePermissionRequest = async () => {
     const res = await requestPermission();
@@ -45,24 +50,21 @@ export default function ScannerScreen() {
     }
   };
 
-  const [manualInput, setManualInput] = useState('');
-  const [scanning, setScanning] = useState(true);
-  const [verifying, setVerifying] = useState(false);
-  const [scanResult, setScanResult] = useState<CheckinResult | null>(null);
-
-  // Load concerts on mount for staff selection
+  // Load concerts and public key on mount for staff selection
   useEffect(() => {
-    const fetchConcerts = async () => {
+    const loadInitData = async () => {
       try {
         const response = await concertService.getConcerts(1, 50);
         setConcerts(response.data);
+        const key = await checkinService.getPublicKey();
+        setPublicKey(key);
       } catch (error) {
-        console.error('Failed to load concerts for check-in selection', error);
+        console.error('Failed to load initial data for check-in selection', error);
       } finally {
         setLoadingConcerts(false);
       }
     };
-    fetchConcerts();
+    loadInitData();
   }, []);
 
   if (!permission) {
@@ -147,27 +149,43 @@ export default function ScannerScreen() {
     processQR(data);
   };
 
-  // Logic băm SHA-256 và gọi API Verify
+  // Logic offline verify và online verify
   const processQR = async (qrRaw: string) => {
     setVerifying(true);
     try {
-      // Băm một chiều bằng SHA-256 trên thiết bị
-      const qrSha256 = await Crypto.digestStringAsync(
-        Crypto.CryptoDigestAlgorithm.SHA256,
-        qrRaw
-      );
+      // 1. Verify offline locally
+      const offlineResult = await checkinService.verifyOffline(qrRaw, publicKey);
+      if (!offlineResult.success || !offlineResult.ticketId) {
+        setScanResult(offlineResult);
+        return;
+      }
 
-      // Gọi API Verify trực tiếp lên server
-      const result = await checkinService.verifyQR(qrSha256, selectedConcert.id);
-      setScanResult(result);
+      // Check if ticket is for the selected concert
+      if (offlineResult.concertId !== selectedConcert.id) {
+        setScanResult({
+          success: false,
+          result: 'WRONG_CONCERT',
+          message: 'Vé này hợp lệ nhưng dành cho sự kiện khác.'
+        });
+        return;
+      }
+
+      // 2. NẾU verify offline ok, gửi POST /checkin/verify với 4 raw fields
+      const onlineResult = await checkinService.verifyOnline({
+        ticketId: offlineResult.ticketId,
+        userId: offlineResult.userId!,
+        concertId: offlineResult.concertId!,
+        ticketTypeId: offlineResult.ticketTypeId!,
+      });
+      
+      setScanResult(onlineResult);
     } catch (error: any) {
-      console.error('Failed to verify QR', error);
-      // Giả lập Offline hay Lỗi kết nối
-      const errorMsg = error.response?.data?.message || 'Không thể kết nối đến máy chủ soát vé.';
+      console.error('Failed online check-in', error);
+      const errorMsg = error.response?.data?.error || error.response?.data?.message || 'Lỗi kết nối máy chủ.';
       setScanResult({
         success: false,
         result: 'INVALID',
-        message: `Lỗi kết nối: ${errorMsg}`,
+        message: `Lỗi kết nối mạng: ${errorMsg}`
       });
     } finally {
       setVerifying(false);
@@ -182,9 +200,18 @@ export default function ScannerScreen() {
   };
 
   const handleMockScan = () => {
-    // Generates a mock token that will fail SHA-256 check on the backend
+    // Generate a valid mock JSON payload to simulate successful offline check but fails online / does online check
+    const mockTicket = {
+      ticket: {
+        ticketId: 'b07973d4-eb54-4cae-913f-c9679f22557e',
+        userId: '4af9187e-15dd-4160-aff4-874aec923194',
+        concertId: selectedConcert.id,
+        ticketTypeId: '2ff664ec-6760-4df9-adcf-2d022c36770e',
+      },
+      signature: 'MOCK_SIGNATURE_BASE64_ED25519_KEY_1234567890_VALID_LENGTH_88_CHARS_LONG_SIGNATURE_STRING=='
+    };
     setScanning(false);
-    processQR('mock-qr-token-' + Math.random().toString(36).substring(7));
+    processQR(JSON.stringify(mockTicket));
   };
 
   const resetScanner = () => {
@@ -269,23 +296,25 @@ export default function ScannerScreen() {
                 {scanResult.result === 'SUCCESS' && (
                   <>
                     <View style={styles.resultRow}>
-                      <ThemedText style={styles.resultLabel}>Khách hàng:</ThemedText>
-                      <ThemedText style={styles.resultValue}>{scanResult.holderName}</ThemedText>
-                    </View>
-                    <View style={styles.resultRow}>
-                      <ThemedText style={styles.resultLabel}>Hạng vé:</ThemedText>
-                      <ThemedText style={styles.resultValue}>{scanResult.ticketType}</ThemedText>
-                    </View>
-                    <View style={styles.resultRow}>
-                      <ThemedText style={styles.resultLabel}>Thời gian quét:</ThemedText>
-                      <ThemedText style={styles.resultValue}>
-                        {new Date(scanResult.checkedInAt || '').toLocaleTimeString('vi-VN')}
-                      </ThemedText>
+                      <ThemedText style={styles.resultLabel}>Trạng thái vé:</ThemedText>
+                      <ThemedText style={[styles.resultValue, { color: '#2e7d32' }]}>Hợp lệ / Được vào</ThemedText>
                     </View>
                     <View style={styles.resultRow}>
                       <ThemedText style={styles.resultLabel}>Mã vé:</ThemedText>
                       <ThemedText style={[styles.resultValue, { fontSize: 11 }]} numberOfLines={1}>
                         {scanResult.ticketId}
+                      </ThemedText>
+                    </View>
+                    <View style={styles.resultRow}>
+                      <ThemedText style={styles.resultLabel}>Khán giả ID:</ThemedText>
+                      <ThemedText style={[styles.resultValue, { fontSize: 11 }]} numberOfLines={1}>
+                        {scanResult.userId}
+                      </ThemedText>
+                    </View>
+                    <View style={styles.resultRow}>
+                      <ThemedText style={styles.resultLabel}>Hạng vé ID:</ThemedText>
+                      <ThemedText style={[styles.resultValue, { fontSize: 11 }]} numberOfLines={1}>
+                        {scanResult.ticketTypeId}
                       </ThemedText>
                     </View>
                   </>
@@ -297,21 +326,21 @@ export default function ScannerScreen() {
                       Cảnh báo! Vé này đã được quét và soát trước đó tại cổng.
                     </ThemedText>
                     <View style={styles.resultRow}>
-                      <ThemedText style={styles.resultLabel}>Đã quét lúc:</ThemedText>
-                      <ThemedText style={styles.resultValue}>
-                        {new Date(scanResult.usedAt || '').toLocaleTimeString('vi-VN')} ngày {new Date(scanResult.usedAt || '').toLocaleDateString('vi-VN')}
-                      </ThemedText>
+                      <ThemedText style={styles.resultLabel}>Trạng thái:</ThemedText>
+                      <ThemedText style={[styles.resultValue, { color: '#c62828' }]}>ĐÃ SỬ DỤNG</ThemedText>
                     </View>
                     <View style={styles.resultRow}>
-                      <ThemedText style={styles.resultLabel}>Soát vé bởi:</ThemedText>
-                      <ThemedText style={styles.resultValue}>{scanResult.usedByStaff || 'N/A'}</ThemedText>
+                      <ThemedText style={styles.resultLabel}>Mã vé:</ThemedText>
+                      <ThemedText style={[styles.resultValue, { fontSize: 11 }]} numberOfLines={1}>
+                        {scanResult.ticketId}
+                      </ThemedText>
                     </View>
                   </>
                 )}
 
                 {scanResult.result === 'INVALID' && (
                   <ThemedText style={styles.errorDescription}>
-                    {scanResult.message || 'Mã QR này không tồn tại trong cơ sở dữ liệu hệ thống TicketBox.'}
+                    {scanResult.message || 'Mã QR này không hợp lệ hoặc chữ ký số không chính xác.'}
                   </ThemedText>
                 )}
 
@@ -342,7 +371,7 @@ export default function ScannerScreen() {
               pressed && styles.buttonPressed,
             ]}
           >
-            <ThemedText style={styles.mockButtonText}>⚡ Quét vé lỗi ngẫu nhiên (Mock Scan)</ThemedText>
+            <ThemedText style={styles.mockButtonText}>⚡ Giả lập Quét vé (Mock Scan)</ThemedText>
           </Pressable>
 
           <View style={styles.inputContainer}>

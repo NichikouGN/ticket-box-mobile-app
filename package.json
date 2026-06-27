@@ -1,7 +1,7 @@
 {
   "name": "ticket-box-mobile-app",
   "main": "expo-router/entry",
-  "version": "1.0.0",
+  "version": "0.8.1",
   "dependencies": {
     "@expo/ui": "~56.0.15",
     "axios": "^1.17.0",

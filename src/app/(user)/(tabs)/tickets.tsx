@@ -52,17 +52,17 @@ export default function MyTicketsScreen() {
       ]}
     >
       <ThemedView type="backgroundSelected" style={styles.ticketHeader}>
-        <ThemedText style={styles.ticketType}>{item.ticketType}</ThemedText>
-        <ThemedText style={[styles.statusText, { color: item.used ? '#e53935' : '#43a047' }]}>
-          {item.used ? 'Đã soát vé' : 'Chưa soát vé'}
+        <ThemedText style={styles.ticketType}>Mã Hạng Vé: {item.ticketTypeId.substring(0, 8)}...</ThemedText>
+        <ThemedText style={[styles.statusText, { color: item.status === 'USED' ? '#e53935' : '#43a047' }]}>
+          {item.status === 'USED' ? 'Đã soát vé' : 'Chưa soát vé'}
         </ThemedText>
       </ThemedView>
 
       <ThemedView type="backgroundElement" style={styles.ticketBody}>
-        <ThemedText type="smallBold" style={styles.concertTitle}>{item.concertTitle}</ThemedText>
-        <ThemedText style={styles.infoText} themeColor="textSecondary">📍 {item.venue}</ThemedText>
+        <ThemedText type="smallBold" style={styles.concertTitle}>Mã Vé: {item.ticketId}</ThemedText>
+        <ThemedText style={styles.infoText} themeColor="textSecondary">🎤 Mã Sự Kiện: {item.concertId}</ThemedText>
         <ThemedText style={styles.infoText} themeColor="textSecondary">
-          📅 {new Date(item.eventDate).toLocaleString('vi-VN', {
+          📅 Ngày mua: {new Date(item.createdAt).toLocaleString('vi-VN', {
             hour: '2-digit',
             minute: '2-digit',
             day: '2-digit',
@@ -70,7 +70,6 @@ export default function MyTicketsScreen() {
             year: 'numeric',
           })}
         </ThemedText>
-        <ThemedText style={styles.infoText} themeColor="textSecondary">👤 Khán giả: {item.holderName}</ThemedText>
       </ThemedView>
     </Pressable>
   );

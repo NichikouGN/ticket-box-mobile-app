@@ -4,7 +4,7 @@ import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useAuth } from '@/hooks/useAuth';
-import { runIntegrationTest, TestResult } from '@/services/e2eMockTest';
+import { runIntegrationTest, TestResult } from '@/mocks/e2eMockTest';
 
 const USE_MOCK = process.env.EXPO_PUBLIC_USE_MOCK === 'true';
 

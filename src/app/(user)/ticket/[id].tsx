@@ -5,43 +5,27 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useLocalSearchParams } from 'expo-router';
 import { ticketService } from '@/services/ticket';
-import { Ticket } from '@/types/ticket';
+import { TicketPayload } from '@/types/ticket';
 import { useTheme } from '@/hooks/use-theme';
-import CryptoJS from 'crypto-js';
 import QRCode from 'react-native-qrcode-svg';
 import * as Clipboard from 'expo-clipboard';
 
 export default function TicketDetailScreen() {
   const { id: ticketId } = useLocalSearchParams<{ id: string }>();
   const theme = useTheme();
-  const [ticket, setTicket] = useState<Ticket | null>(null);
+  const [payload, setPayload] = useState<TicketPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [qrRaw, setQrRaw] = useState<string | null>(null);
-  const [decryptError, setDecryptError] = useState(false);
 
   useEffect(() => {
     const fetchTicketDetail = async () => {
       if (!ticketId) return;
       setLoading(true);
-      setDecryptError(false);
       try {
         const detail = await ticketService.getTicketDetail(ticketId);
-        setTicket(detail);
-
-        // Decrypt QR raw from qrAes256 in memory
-        const secretKey = process.env.EXPO_PUBLIC_QR_SECRET_KEY || 'ticketbox_secure_qr_secret_key_2026';
-        try {
-          const bytes = CryptoJS.AES.decrypt(detail.qrAes256, secretKey);
-          const decrypted = bytes.toString(CryptoJS.enc.Utf8);
-          
-          if (!decrypted) {
-            throw new Error('Empty decrypted content');
-          }
-          setQrRaw(decrypted);
-        } catch (decryptErr) {
-          console.error(`ERROR | AES decrypt failed | ticket_id=${ticketId}`, decryptErr);
-          setDecryptError(true);
-        }
+        setPayload(detail);
+        // Standard Ed25519 requires passing the whole object { ticket, signature } as the QR value
+        setQrRaw(JSON.stringify(detail));
       } catch (error) {
         console.error('Failed to load ticket detail', error);
         Alert.alert('Lỗi', 'Không thể tải chi tiết vé.');
@@ -61,13 +45,15 @@ export default function TicketDetailScreen() {
     );
   }
 
-  if (!ticket) {
+  if (!payload || !payload.ticket) {
     return (
       <ThemedView style={styles.errorContainer}>
         <ThemedText themeColor="textSecondary">Không tìm thấy thông tin vé.</ThemedText>
       </ThemedView>
     );
   }
+
+  const { ticket } = payload;
 
   return (
     <ScrollView contentContainerStyle={styles.scrollContent}>
@@ -83,19 +69,13 @@ export default function TicketDetailScreen() {
           {/* Header */}
           <ThemedView type="backgroundSelected" style={styles.header}>
             <ThemedText style={styles.concertTitle} type="smallBold">
-              {ticket.concertTitle}
+              Vé Xem Ca Nhạc
             </ThemedText>
           </ThemedView>
 
           {/* QR Code Container */}
           <View style={styles.qrSection}>
-            {decryptError ? (
-              <View style={styles.errorBox}>
-                <ThemedText style={styles.errorText}>
-                  Không thể hiển thị mã QR. Vui lòng thử lại.
-                </ThemedText>
-              </View>
-            ) : qrRaw ? (
+            {qrRaw ? (
               <View style={styles.qrWrapper}>
                 <QRCode
                   value={qrRaw}
@@ -108,13 +88,13 @@ export default function TicketDetailScreen() {
               <ActivityIndicator size="small" color="#000" />
             )}
             <ThemedText style={styles.qrHint} themeColor="textSecondary">
-              Quét mã này tại cổng soát vé để vào sự kiện
+              Quét mã này tại cổng soát vé để vào sự kiện (Mã QR ký số ED25519)
             </ThemedText>
             {qrRaw && (
               <Pressable
                 onPress={async () => {
                   await Clipboard.setStringAsync(qrRaw);
-                  Alert.alert('Đã Sao Chép', 'Đã sao chép raw QR token để test check-in.');
+                  Alert.alert('Đã Sao Chép', 'Đã sao chép raw QR token (JSON chứa ticket & signature) để test check-in.');
                 }}
                 style={({ pressed }) => [
                   styles.copyDevButton,
@@ -130,52 +110,32 @@ export default function TicketDetailScreen() {
           <View style={styles.infoSection}>
             <View style={styles.infoRow}>
               <View style={styles.infoCol}>
-                <ThemedText style={styles.label} themeColor="textSecondary">HẠNG VÉ</ThemedText>
-                <ThemedText style={styles.value}>{ticket.ticketType}</ThemedText>
-              </View>
-              <View style={styles.infoCol}>
-                <ThemedText style={styles.label} themeColor="textSecondary">TRẠNG THÁI</ThemedText>
-                <ThemedText style={[styles.value, { color: ticket.used ? '#e53935' : '#43a047', fontWeight: 'bold' }]}>
-                  {ticket.used ? 'Đã soát vé' : 'Hợp lệ / Chưa dùng'}
-                </ThemedText>
-              </View>
-            </View>
-
-            <View style={styles.divider} />
-
-            <View style={styles.infoCol}>
-              <ThemedText style={styles.label} themeColor="textSecondary">ĐỊA ĐIỂM</ThemedText>
-              <ThemedText style={styles.value}>📍 {ticket.venue}</ThemedText>
-            </View>
-
-            <View style={styles.divider} />
-
-            <View style={styles.infoRow}>
-              <View style={styles.infoCol}>
-                <ThemedText style={styles.label} themeColor="textSecondary">THỜI GIAN</ThemedText>
-                <ThemedText style={styles.value}>
-                  📅 {new Date(ticket.eventDate).toLocaleString('vi-VN', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                    day: '2-digit',
-                    month: '2-digit',
-                    year: 'numeric',
-                  })}
-                </ThemedText>
-              </View>
-            </View>
-
-            <View style={styles.divider} />
-
-            <View style={styles.infoRow}>
-              <View style={styles.infoCol}>
-                <ThemedText style={styles.label} themeColor="textSecondary">NGƯỜI SỞ HỮU</ThemedText>
-                <ThemedText style={styles.value}>👤 {ticket.holderName}</ThemedText>
-              </View>
-              <View style={styles.infoCol}>
                 <ThemedText style={styles.label} themeColor="textSecondary">MÃ VÉ (TICKET ID)</ThemedText>
                 <ThemedText style={[styles.value, styles.ticketIdText]} numberOfLines={1}>
                   {ticket.ticketId}
+                </ThemedText>
+              </View>
+              <View style={styles.infoCol}>
+                <ThemedText style={styles.label} themeColor="textSecondary">KHÁN GIẢ ID</ThemedText>
+                <ThemedText style={[styles.value, styles.ticketIdText]} numberOfLines={1}>
+                  {ticket.userId}
+                </ThemedText>
+              </View>
+            </View>
+
+            <View style={styles.divider} />
+
+            <View style={styles.infoRow}>
+              <View style={styles.infoCol}>
+                <ThemedText style={styles.label} themeColor="textSecondary">SỰ KIỆN ID (CONCERT ID)</ThemedText>
+                <ThemedText style={[styles.value, styles.ticketIdText]} numberOfLines={1}>
+                  {ticket.concertId}
+                </ThemedText>
+              </View>
+              <View style={styles.infoCol}>
+                <ThemedText style={styles.label} themeColor="textSecondary">HẠNG VÉ ID</ThemedText>
+                <ThemedText style={[styles.value, styles.ticketIdText]} numberOfLines={1}>
+                  {ticket.ticketTypeId}
                 </ThemedText>
               </View>
             </View>
@@ -249,20 +209,6 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginTop: Spacing.one,
   },
-  errorBox: {
-    padding: Spacing.four,
-    borderRadius: Spacing.two,
-    backgroundColor: 'rgba(229, 57, 53, 0.08)',
-    borderWidth: 1,
-    borderColor: '#e53935',
-    marginVertical: Spacing.two,
-  },
-  errorText: {
-    color: '#e53935',
-    fontWeight: 'bold',
-    fontSize: 14,
-    textAlign: 'center',
-  },
   infoSection: {
     padding: Spacing.three,
     borderTopWidth: 1.5,
@@ -289,7 +235,7 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   ticketIdText: {
-    fontSize: 12.5,
+    fontSize: 11,
     fontFamily: 'monospace',
   },
   divider: {
@@ -313,3 +259,4 @@ const styles = StyleSheet.create({
     fontWeight: 'bold',
   },
 });
+

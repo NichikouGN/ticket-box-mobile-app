@@ -5,6 +5,7 @@ export interface OrderItem {
 }
 
 export interface BookingRequest {
+  paymentMethod: 'stripe';
   data: OrderItem[];
 }
 
@@ -14,49 +15,28 @@ export interface BookingResponse {
   orderId: string;
   totalPrice: number;
   paymentDeadline: string;
-}
-
-export type PaymentStatus = 'PENDING' | 'PENDING_PAYMENT' | 'PROCESSING' | 'SUCCESS' | 'COMPLETED' | 'FAILED' | 'EXPIRED';
-
-export interface PaymentDetails {
-  paymentId: string;
-  orderId: string;
-  status: PaymentStatus;
-  amount: number;
-  paymentRef: string;
-  processedAt: string;
   paymentUrl?: string;
 }
 
-// Raw backend structures
-export interface RawOrderItem {
-  concert_id: string;
-  ticket_type_id: string;
-  quantity: number;
+export type PaymentStatus = 'PENDING_PAYMENT' | 'PROCESSING' | 'COMPLETED' | 'FAILED' | 'EXPIRED';
+
+export interface PaymentDetails {
+  orderId: string;
+  status: PaymentStatus;
+  totalPrice: number;
+  paymentDeadline: string;
+  paymentUrl?: string;
 }
 
-export interface RawBookingRequest {
-  data: RawOrderItem[];
-}
-
+// Raw structures representing backend responses
 export interface RawBookingResponse {
   success: boolean;
   message: string;
   data: {
-    order_id: string;
-    total_price: number;
-    payment_deadline: string;
+    orderId: string;
+    totalPrice: number;
+    paymentDeadline: string;
+    paymentUrl?: string;
   };
 }
 
-export interface RawPaymentDetails {
-  success: boolean;
-  data: {
-    payment_id: string;
-    order_id: string;
-    status: PaymentStatus;
-    amount: number;
-    payment_ref: string;
-    processed_at: string;
-  };
-}

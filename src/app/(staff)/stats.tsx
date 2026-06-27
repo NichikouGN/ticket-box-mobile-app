@@ -113,7 +113,7 @@ export default function CheckinStatsScreen() {
                 <ThemedText style={styles.cardIcon}>✅</ThemedText>
                 <ThemedText style={styles.cardLabel} themeColor="textSecondary">ĐÃ SOÁT VÉ</ThemedText>
               </View>
-              <ThemedText style={[styles.cardValue, { color: '#43a047' }]}>{stats.scannedTickets}</ThemedText>
+              <ThemedText style={[styles.cardValue, { color: '#43a047' }]}>{stats.checkedInTickets}</ThemedText>
             </ThemedView>
 
             {/* Card 3: Số vé chưa quét */}
@@ -133,7 +133,7 @@ export default function CheckinStatsScreen() {
         <ThemedView type="backgroundElement" style={styles.visualCard}>
           <ThemedText style={styles.visualTitle}>Tỷ lệ soát vé tại cổng</ThemedText>
           <ThemedText style={styles.visualPercent}>
-            {getPercentage(stats.scannedTickets, stats.totalTickets)}%
+            {getPercentage(stats.checkedInTickets, stats.totalTickets)}%
           </ThemedText>
           <ThemedText style={styles.visualSubtitle} themeColor="textSecondary">
             Số vé đã check-in trên tổng lượng phát hành
@@ -144,35 +144,14 @@ export default function CheckinStatsScreen() {
         <ThemedText type="smallBold" style={styles.sectionTitle}>CHI TIẾT THEO HẠNG VÉ</ThemedText>
         
         <View style={styles.detailsList}>
-          {stats.byTicketType.map((type) => {
-            const percent = getPercentage(type.scannedTickets || type.checkedIn, type.total);
-            return (
-              <ThemedView 
-                key={type.name} 
-                type="backgroundElement" 
-                style={[styles.typeRow, { borderColor: theme.backgroundSelected }]}
-              >
-                <View style={styles.rowInfo}>
-                  <ThemedText style={styles.typeName}>{type.name}</ThemedText>
-                  <ThemedText style={styles.typeStats} themeColor="textSecondary">
-                    {type.scannedTickets || type.checkedIn} / {type.total} ({percent}%)
-                  </ThemedText>
-                </View>
-                {/* Progress bar */}
-                <View style={[styles.progressBackground, { backgroundColor: theme.backgroundSelected }]}>
-                  <View 
-                    style={[
-                      styles.progressBar, 
-                      { 
-                        width: `${percent}%`, 
-                        backgroundColor: percent >= 80 ? '#2e7d32' : percent >= 40 ? '#ef6c00' : '#1e88e5'
-                      }
-                    ]} 
-                  />
-                </View>
-              </ThemedView>
-            );
-          })}
+          <ThemedView 
+            type="backgroundElement" 
+            style={[styles.typeRow, { borderColor: theme.backgroundSelected, padding: Spacing.four, alignItems: 'center' }]}
+          >
+            <ThemedText themeColor="textSecondary" style={{ textAlign: 'center', fontSize: 13.5 }}>
+              Phân rã chi tiết theo từng hạng vé chưa được hỗ trợ trực tiếp từ API Gateway của hệ thống.
+            </ThemedText>
+          </ThemedView>
         </View>
       </ThemedView>
     </ScrollView>

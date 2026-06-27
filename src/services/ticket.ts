@@ -1,28 +1,33 @@
 import { apiClient } from './api';
-import { RawTicket, Ticket } from '@/types/ticket';
+import { RawTicket, Ticket, TicketPayload } from '@/types/ticket';
 
 const mapTicket = (raw: RawTicket): Ticket => ({
-  ticketId: raw.ticket_id,
-  concertTitle: raw.concert_title,
-  eventDate: raw.event_date,
-  venue: raw.venue,
-  ticketType: raw.ticket_type,
-  holderName: raw.holder_name,
-  qrAes256: raw.qr_aes256 || raw.qr_raw || '',
-  used: raw.used,
+  ticketId: raw.id,
+  concertId: raw.concert_id,
+  ticketTypeId: raw.ticket_type_id,
+  status: raw.status,
+  createdAt: raw.created_at,
+  usedAt: raw.used_at,
 });
 
 export const ticketService = {
   async getTickets(): Promise<Ticket[]> {
     const response = await apiClient.get<{ success: boolean; data: RawTicket[] }>('/tickets');
-    if (response.data && response.data.success && Array.isArray(response.data.data)) {
-      return response.data.data.map(mapTicket);
+    const responseData = response.data?.data || response.data || [];
+    if (Array.isArray(responseData)) {
+      return responseData.map(mapTicket);
     }
     return [];
   },
 
-  async getTicketDetail(ticketId: string): Promise<Ticket> {
-    const response = await apiClient.get<{ success: boolean; data: RawTicket }>(`/tickets/tickets/${ticketId}`);
-    return mapTicket(response.data.data);
+  async getTicketDetail(ticketId: string): Promise<TicketPayload> {
+    const response = await apiClient.get<{ success: boolean; data: TicketPayload }>(`/tickets/${ticketId}`);
+    // The backend returns { success: true, data: { ticket: { ticketId, userId, concertId, ticketTypeId }, signature } }
+    const responseData = response.data?.data || response.data;
+    if (!responseData || !responseData.ticket) {
+      throw new Error('Invalid ticket detail response');
+    }
+    return responseData;
   },
 };
+

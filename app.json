@@ -2,7 +2,7 @@
   "expo": {
     "name": "ticket-box-mobile-app",
     "slug": "ticket-box-mobile-app",
-    "version": "1.0.0",
+    "version": "0.8.1",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "scheme": "ticketboxmobileapp",

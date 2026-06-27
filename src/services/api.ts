@@ -1,7 +1,7 @@
 import axios, { AxiosAdapter, AxiosError, InternalAxiosRequestConfig } from 'axios';
 import { storage } from '@/utils/storage';
 import { router } from 'expo-router';
-import { handleMockRequest } from '@/constants/mockData';
+import { handleMockRequest } from '@/mocks/mockData';
 
 const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://10.0.2.2/api/v1';
 const USE_MOCK = process.env.EXPO_PUBLIC_USE_MOCK === 'true';

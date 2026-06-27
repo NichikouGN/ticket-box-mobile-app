@@ -84,10 +84,12 @@ export default function ConcertDetailScreen() {
           </>
         )}
 
-        {concert.artist?.bio && (
+        {concert.artists && concert.artists.length > 0 && (
           <>
-            <ThemedText type="subtitle" style={styles.sectionTitle}>Thông Tin Nghệ Sĩ (AI Bio)</ThemedText>
-            <ThemedText style={styles.artistBio}>{concert.artist.bio}</ThemedText>
+            <ThemedText type="subtitle" style={styles.sectionTitle}>Tiểu Sử Nghệ Sĩ</ThemedText>
+            <ThemedText style={styles.artistBio}>
+              {concert.artist?.bio || 'Đang cập nhật thông tin nghệ sĩ.'}
+            </ThemedText>
           </>
         )}
 
