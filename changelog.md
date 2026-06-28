@@ -6,26 +6,47 @@ Tài liệu này ghi nhận toàn bộ lịch sử cập nhật, nâng cấp tí
 
 ## Các công việc tiếp theo (Next Steps)
 
-### 1. Khắc phục và điều chỉnh lỗi phía Backend (Dựa trên report.txt)
-- **Sửa đổi thiết kế luồng kết nối SSE (Order Service):**
-  - Loại bỏ hoàn toàn hành vi tự động ngắt kết nối (`res.end()` hoặc `clientStream.end()`) khi trạng thái đơn hàng là `PENDING_PAYMENT`. Luồng kết nối SSE bắt buộc phải duy trì trạng thái `'keep-alive'` và chỉ đóng lại khi đơn hàng đạt trạng thái cuối cùng thực sự (`COMPLETED`, `FAILED`, `EXPIRED`).
-  - Vá lỗi hàm `setTimeout` tại tệp `order.controller.ts` dòng 97 bằng cách bổ sung tham số thời gian chờ cụ thể (ví dụ: 120.000ms), tránh việc đóng luồng ngay lập tức do Node.js mặc định delay = 0ms.
-- **Cấu hình động URL phản hồi Stripe (Payment Service):**
-  - Loại bỏ địa chỉ hardcoded `http://localhost:4000` tại tệp `stripe.service.ts` dòng 38-39.
-  - Thay đổi địa chỉ này để trỏ về Custom Scheme Deep Link của ứng dụng di động: `ticketboxmobileapp://payment-result?orderId={ORDER_ID}` nhằm hỗ trợ kiểm thử thực tế trên thiết bị di động LAN.
+### 1. Phối hợp đồng bộ phía Backend
+- **Gộp URL phản hồi của Stripe (Payment Service):**
+  - Đợi backend gộp `success_url` và `cancel_url` của Stripe thành một đường dẫn duy nhất (ví dụ: `ticketboxmobileapp://payment-result`). Khi đó, phía Mobile App đã sẵn sàng tương thích (nhờ cơ chế bắt scheme-only `ticketboxmobileapp://`) và không cần thay đổi thêm mã nguồn nào.
 - **Bổ sung liên kết dữ liệu tiểu sử nghệ sĩ (Concert Service):**
-  - Thực hiện left-join bảng `artists` để trả về trường `verified_bio` hoặc `bio` trong dữ liệu chi tiết concert của API `GET /concerts/:id`.
+  - Hối thúc backend thực hiện left-join bảng `artists` để trả về trường `verified_bio` hoặc `bio` trong dữ liệu chi tiết concert của API `GET /concerts/:id` (hiện tại mobile đang hiển thị thông báo fallback).
 
 ### 2. Thực hiện kiểm thử tích hợp thực tế (E2E Integration Testing)
 - **Kiểm thử trên thiết bị di động LAN:**
   - Cập nhật biến môi trường `EXPO_PUBLIC_API_URL` trong tệp `.env` trỏ về IP mạng LAN của máy tính chạy backend.
-  - Tiến hành chạy toàn bộ luồng mua vé: Tạo đơn -> Nhận URL Stripe -> Thanh toán giả lập -> Trình duyệt đóng tự động -> SSE chuyển trạng thái -> Spinner tắt và tự động điều hướng về màn hình vé.
+  - Tiến hành chạy toàn bộ luồng mua vé thực tế từ thiết bị di động kết nối mạng LAN với backend v0.6.1.
 - **Kiểm thử soát vé tại cổng:**
   - Sử dụng camera của hai thiết bị di động thật để kiểm tra luồng quét mã QR ED25519 offline & online.
 
 ---
 
 ## Lịch sử phiên bản (Version History)
+
+### v0.8.2: Tích Hợp Luồng SSE 2 Giai Đoạn & Tránh Chặn WebBrowser (2026-06-28)
+
+#### Bổ sung mới
+- **Luồng SSE 2 Giai đoạn mới (Backend v0.6.1):**
+  - Tách biệt hoàn toàn luồng kết nối SSE thành 2 giai đoạn độc lập:
+    - Giai đoạn 1: Lắng nghe `GET /api/v1/orders/:orderId/stream/payment-url` để nhận `paymentUrl` (kết nối tự đóng sau khi gửi).
+    - Giai đoạn 2: Lắng nghe `GET /api/v1/orders/:orderId/stream/order-confirm` để nhận trạng thái cuối (`COMPLETED`, `FAILED`, `EXPIRED`).
+  - Đảm bảo thứ tự gọi nghiêm ngặt: Thiết lập kết nối `/stream/order-confirm` chạy nền **trước** khi người dùng kích hoạt mở cổng thanh toán nhằm tránh hiện tượng race condition khi webhook Stripe phản hồi quá nhanh.
+- **Xử lý Timeout 2 Giai đoạn độc lập:**
+  - **Timeout Giai đoạn 1 (30 giây)**: Nếu quá thời gian khởi tạo cổng Stripe, hiển thị thông báo lỗi cứng: *"Không thể khởi tạo thanh toán. Vui lòng thử lại."* kèm nút **"Thử lại"** cho phép kết nối lại.
+  - **Timeout Giai đoạn 2 (3 phút)**: Nếu quá thời gian xử lý thanh toán, hiển thị thông báo mềm: *"Giao dịch đang xử lý lâu hơn dự kiến. Vé sẽ xuất hiện trong Ví vé khi hoàn tất."* và chuyển hướng an toàn về trang chủ.
+- **Chuyển tiếp tổng giá vé qua Route Params:**
+  - Cập nhật màn hình `booking/[id].tsx` truyền thêm `totalPrice` sang màn hình thanh toán qua route params, giúp hiển thị đúng số tiền cần trả cho người dùng.
+
+#### Thay đổi & Sửa đổi
+- **Yêu cầu tương tác người dùng (User Gesture) cho WebBrowser:**
+  - Loại bỏ hoàn toàn cơ chế tự động mở trình duyệt khi nhận được `paymentUrl` (phòng ngừa chính sách OS chặn mở cửa sổ tự động không có tương tác).
+  - Spinner khởi tạo sẽ biến mất sau khi nhận được URL thanh toán, hiển thị nút bấm rõ ràng **"Thanh toán qua Stripe ({totalPrice} VNĐ)"** để người dùng chủ động kích hoạt.
+- **Cấu hình returnUrl tối giản:**
+  - Thay đổi returnUrl trong `WebBrowser.openAuthSessionAsync` thành `ticketboxmobileapp://` (chỉ chứa scheme) để tự động nhận dạng và đóng trình duyệt cho cả 2 đường dẫn redirect (`payment-success` và `payment-cancelled`).
+- **Loại bỏ hoàn toàn endpoint cũ:**
+  - Xóa bỏ tất cả các tham chiếu tới endpoint `/stream` đơn lẻ cũ trong dịch vụ `orderService` và màn hình thanh toán.
+
+---
 
 ### v0.8.1: Stripe SSE, Deep Linking & ED25519 Security (2026-06-27)
 

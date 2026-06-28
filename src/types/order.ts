@@ -40,3 +40,16 @@ export interface RawBookingResponse {
   };
 }
 
+export interface PaymentUrlEvent {
+  orderId: string;
+  status: PaymentStatus;
+  paymentUrl: string;
+  paymentDeadline: string;
+}
+
+export interface OrderConfirmEvent {
+  orderId: string;
+  status: PaymentStatus;
+}
+
+

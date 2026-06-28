@@ -85,7 +85,10 @@ export default function BookingScreen() {
       const response = await orderService.createOrder(orderItems, idempotencyKey);
       
       if (response.success && response.orderId) {
-        router.push(`/(user)/payment/${response.orderId}`);
+        router.push({
+          pathname: '/(user)/payment/[orderId]',
+          params: { orderId: response.orderId, totalPrice: response.totalPrice.toString() }
+        });
       } else {
         Alert.alert('Đặt Vé Thất Bại', response.message || 'Yêu cầu của bạn không thể xử lý.');
       }
