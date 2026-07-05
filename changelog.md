@@ -23,6 +23,18 @@ Tài liệu này ghi nhận toàn bộ lịch sử cập nhật, nâng cấp tí
 
 ## Lịch sử phiên bản (Version History)
 
+### v0.8.3: Khởi Tạo VIP Check-in & Phát Hiện Blocker API (2026-07-05)
+
+#### Bổ sung mới
+- **Cấu trúc Dữ liệu VIP Check-in (`src/types/vip.ts`):**
+  - Định nghĩa kiểu dữ liệu `VipGuest`, `VipCheckInResponse`, và `VipListResponse` khớp với mô hình bảng dữ liệu `vip_guests` trong Backend v0.7.0.
+- **Dịch vụ VIP Check-in Stub (`src/services/vip.ts`):**
+  - Triển khai phương thức `vipService.checkInVip(concertId, vipGuestId)` gửi PATCH qua API Gateway để thực hiện check-in trực tuyến cho khách VIP.
+- **Báo cáo Blocker Backend (`report.txt`):**
+  - Bổ sung phát hiện Blocker: API thiếu route GET lấy danh sách VIP cho `STAFF` (chỉ có quyền `ORGANIZER`), ngăn cản việc xây dựng màn hình tìm kiếm.
+
+---
+
 ### v0.8.2: Tích Hợp Luồng SSE 2 Giai Đoạn & Tránh Chặn WebBrowser (2026-06-28)
 
 #### Bổ sung mới
