@@ -23,6 +23,25 @@ Tài liệu này ghi nhận toàn bộ lịch sử cập nhật, nâng cấp tí
 
 ## Lịch sử phiên bản (Version History)
 
+### v0.8.4: Hoàn Thiện VIP Check-in & Phát Hiện Lỗi Mapping Backend (2026-07-08)
+
+#### Bổ sung mới
+- **Màn hình Check-in VIP (`vip-checkin.tsx`):**
+  - Xây dựng giao diện Soát vé VIP hỗ trợ kéo làm mới (Pull-to-refresh) và cuộn tải thêm.
+  - Tích hợp thanh tìm kiếm thông tin nhanh (tên, email, đối tác) thực hiện tức thời ở Client-side.
+  - Hiển thị trực quan trạng thái: Khách VIP chưa check-in có nút "Vào Cổng", khách đã vào cổng hiển thị biểu tượng lá cây và thời gian vào cụ thể.
+  - Dialog cảnh báo xác nhận trước khi check-in tránh bấm nhầm.
+- **Tích hợp nút điều hướng Staff:**
+  - Bổ sung nút bấm hổ phách **"👑 Khách VIP"** trên góc tiêu đề màn hình `scanner.tsx` để nhân viên soát vé chuyển luồng thuận tiện.
+- **Bổ sung API lấy danh sách VIP (`services/vip.ts`):**
+  - Liên kết hàm `getVipGuests` tới endpoint mới của Backend `GET /api/v1/staff/concerts/:concertId/vip-guests`.
+
+#### Thay đổi & Sửa đổi
+- **Báo cáo Lỗi Mapping Database Backend (`report.txt`):**
+  - Ghi nhận lỗi Mục 6: `VipRepository.getVipGuestsByConcertId` quên map cột `id` của DB ra API, khiến Mobile App nhận giá trị `id` bị `undefined`.
+
+---
+
 ### v0.8.3: Khởi Tạo VIP Check-in & Phát Hiện Blocker API (2026-07-05)
 
 #### Bổ sung mới

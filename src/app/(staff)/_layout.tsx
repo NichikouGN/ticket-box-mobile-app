@@ -21,6 +21,7 @@ export default function StaffLayout() {
     >
       <Stack.Screen name="scanner" options={{ title: 'Soát Vé (Scanner)' }} />
       <Stack.Screen name="stats" options={{ title: 'Thống Kê Check-in' }} />
+      <Stack.Screen name="vip-checkin" options={{ title: 'Soát Vé VIP' }} />
     </Stack>
   );
 }

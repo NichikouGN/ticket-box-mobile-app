@@ -73,20 +73,40 @@ BÁO CÁO LỖI & KIẾN NGHỊ TÍCH HỢP BACKEND (TICKETBOX BACKEND SERVICES)
   }
   ```
 
-5. [MỨC ĐỘ: NGHIÊM TRỌNG CAO - BLOCKER] THIẾU ENDPOINT LẤY DANH SÁCH KHÁCH VIP CHO STAFF
+5. [MỨC ĐỘ: NGHIÊM TRỌNG CAO - BLOCKER] THIẾU ENDPOINT LẤY DANH SÁCH KHÁCH VIP CHO STAFF (ĐÃ KHẮC PHỤC TRÊN BACKEND V0.8.0)
 --------------------------------------------------------------------
-- Vị trí file: services/concert-service/src/routes/staff.routes.ts
+- Trạng thái: Backend v0.8.0 đã bổ sung endpoint `GET /api/v1/staff/concerts/:concertId/vip-guests` dành cho vai trò STAFF/ORGANIZER.
+
+6. [MỨC ĐỘ: NGHIÊM TRỌNG CAO - LỖI MAPPING] KHÔNG TRẢ VỀ TRƯỜNG "id" CỦA KHÁCH VIP TRONG DANH SÁCH
+--------------------------------------------------------------------
+- Vị trí file: services/concert-service/src/repository/vip.repository.ts (Hàm getVipGuestsByConcertId)
 - Hiện trạng:
-  Trong tệp định nghĩa route dành cho vai trò STAFF/nhân viên soát vé (`staff.routes.ts`), Backend chỉ cung cấp duy nhất 1 route PATCH để thực hiện check-in VIP:
-  `PATCH /concerts/:concertId/vip-guests/:vipGuestId/check-in`
-  Hoàn toàn không có bất kỳ route GET nào để STAFF có thể truy vấn, lấy danh sách hoặc tìm kiếm khách VIP của concert (ví dụ: `GET /staff/concerts/:concertId/vip-guests`).
-  Tuy có route `GET /concerts/:concertId/vip-guests` trong `organizer.routes.ts` nhưng route này được cấu hình quyền hạn nghiêm ngặt chỉ dành cho `ORGANIZER` (`rbacMiddleware(["ORGANIZER"])`), nhân viên soát vé mang role `STAFF` sẽ bị trả về lỗi `403 Forbidden` khi cố gắng gọi.
+  Trong hàm `getVipGuestsByConcertId` của `VipRepository` Backend v0.8.0, đối tượng trả về được map thủ công như sau:
+  ```typescript
+  return vipGuests.map((guest) => ({
+    fullName: guest.full_name,
+    email: guest.email,
+    sponsor: guest.sponsor,
+    concertId: guest.concert_id,
+    checkedInAt: guest.checked_in_at,
+  }));
+  ```
+  Hàm này hoàn toàn bỏ quên trường **`id`** (tương ứng với `guest.id` từ cơ sở dữ liệu).
 - Giải thích hệ quả:
-  Đặc tả nghiệp vụ VIP Check-in yêu cầu Staff tìm kiếm tên/email khách hàng bằng mắt từ danh sách để thực hiện click check-in (do VIP không có mã QR hay vé). Việc thiếu endpoint GET này khiến Mobile App của Staff bị chặn (Blocker) hoàn toàn, không thể hiển thị danh sách hay cung cấp thanh tìm kiếm danh tính VIP.
+  Khi Mobile App gọi `GET /api/v1/staff/concerts/:concertId/vip-guests` để lấy danh sách khách VIP, dữ liệu trả về hoàn toàn thiếu trường `id`. Do đó, khi Staff bấm "Check-in" cho một khách VIP, Mobile App không có mã định danh `vipGuestId` để gửi tiếp yêu cầu `PATCH /api/v1/staff/concerts/:concertId/vip-guests/:vipGuestId/check-in` (bị lỗi `/undefined/check-in`).
 - Khuyến nghị sửa:
-  Bổ sung route GET danh sách VIP vào `staff.routes.ts` hoặc cập nhật middleware phân quyền trong `organizer.routes.ts` cho phép cả `STAFF` truy cập route lấy danh sách VIP:
-  - Route đề xuất: `GET /staff/concerts/:concertId/vip-guests` (gọi tới `OrganizerVipController.getVipGuests`).
-  - Quyền hạn: `rbacMiddleware(["STAFF", "ORGANIZER"])`.
+  Bổ sung trường `id: guest.id` vào phần map đối tượng trả về của `getVipGuestsByConcertId`:
+  ```typescript
+  return vipGuests.map((guest) => ({
+    id: guest.id,
+    fullName: guest.full_name,
+    email: guest.email,
+    sponsor: guest.sponsor,
+    concertId: guest.concert_id,
+    checkedInAt: guest.checked_in_at,
+  }));
+  ```
 
 ====================================================================
+
 

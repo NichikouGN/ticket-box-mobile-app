@@ -236,6 +236,15 @@ export default function ScannerScreen() {
               >
                 <ThemedText style={styles.headerStatsBtnText}>📊 Thống Kê</ThemedText>
               </Pressable>
+              <Pressable
+                onPress={() => router.push({
+                  pathname: '/(staff)/vip-checkin',
+                  params: { concertId: selectedConcert.id, concertTitle: selectedConcert.title }
+                })}
+                style={styles.headerVipBtn}
+              >
+                <ThemedText style={styles.headerVipBtnText}>👑 Khách VIP</ThemedText>
+              </Pressable>
               <Pressable onPress={handleLogout} style={styles.headerLogoutBtnCompact}>
                 <ThemedText style={styles.headerLogoutBtnTextCompact}>Thoát</ThemedText>
               </Pressable>
@@ -672,6 +681,17 @@ const styles = StyleSheet.create({
     borderRadius: Spacing.one,
   },
   headerLogoutBtnTextCompact: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 12.5,
+  },
+  headerVipBtn: {
+    paddingVertical: Spacing.one,
+    paddingHorizontal: Spacing.two,
+    backgroundColor: '#ffb300',
+    borderRadius: Spacing.one,
+  },
+  headerVipBtnText: {
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 12.5,
