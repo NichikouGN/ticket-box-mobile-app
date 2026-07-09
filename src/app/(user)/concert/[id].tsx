@@ -59,14 +59,15 @@ export default function ConcertDetailScreen() {
   };
 
   return (
-    <ScrollView style={styles.scrollView}>
-      {concert.thumbnailUrl ? (
-        <Image source={{ uri: concert.thumbnailUrl }} style={styles.banner} />
-      ) : (
-        <View style={styles.bannerPlaceholder} />
-      )}
+    <View style={{ flex: 1 }}>
+      <ScrollView style={styles.scrollView} contentContainerStyle={{ paddingBottom: 110 }}>
+        {concert.thumbnailUrl ? (
+          <Image source={{ uri: concert.thumbnailUrl }} style={styles.banner} />
+        ) : (
+          <View style={styles.bannerPlaceholder} />
+        )}
 
-      <ThemedView style={styles.container}>
+        <ThemedView style={styles.container}>
         <ThemedText type="title" style={styles.title}>{concert.title}</ThemedText>
 
         <ThemedView type="backgroundElement" style={styles.infoCard}>
@@ -164,6 +165,11 @@ export default function ConcertDetailScreen() {
           );
         })()}
 
+      </ThemedView>
+      </ScrollView>
+
+      {/* Sticky Bottom Dock */}
+      <ThemedView type="backgroundElement" style={styles.bottomDock}>
         <Pressable
           onPress={() => router.push(`/(user)/booking/${concert.id}`)}
           style={({ pressed }) => [
@@ -174,7 +180,7 @@ export default function ConcertDetailScreen() {
           <ThemedText style={styles.bookButtonText}>Mua Vé Ngay</ThemedText>
         </Pressable>
       </ThemedView>
-    </ScrollView>
+    </View>
   );
 }
 
@@ -292,7 +298,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderRadius: Spacing.two,
-    marginTop: Spacing.four,
   },
   bookButtonPressed: {
     opacity: 0.8,
@@ -301,5 +306,19 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 16,
+  },
+  bottomDock: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    padding: Spacing.four,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(0,0,0,0.05)',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: -3 },
+    shadowOpacity: 0.05,
+    shadowRadius: 5,
+    elevation: 8,
   },
 });

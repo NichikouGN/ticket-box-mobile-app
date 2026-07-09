@@ -1,6 +1,6 @@
 import { apiClient } from './api';
 import { storage } from '@/utils/storage';
-import { RawSignInResponse, SignInResponse, SignUpResponse, UserRole } from '@/types/auth';
+import { RawSignInResponse, SignInResponse, SignUpResponse, UserRole, User } from '@/types/auth';
 
 // Pure JavaScript Base64 decode helper supporting UTF-8 for React Native compatibility
 function decodeBase64(str: string): string {
@@ -113,6 +113,28 @@ export const authService = {
       fullName
     });
     return response.data;
+  },
+
+  async getProfile(): Promise<User> {
+    const response = await apiClient.get<{ success: boolean; data: any }>('/users/profile');
+    const rawUser = response.data?.data || response.data;
+    if (!rawUser) {
+      throw new Error('Invalid user profile response');
+    }
+
+    let role: UserRole = 'audience';
+    const rawRole = String(rawUser.role).toLowerCase();
+    if (rawRole === 'staff' || rawRole === 'organizer' || rawRole === 'audience') {
+      role = rawRole;
+    }
+
+    return {
+      id: rawUser.id,
+      email: rawUser.email,
+      fullName: rawUser.fullName || rawUser.full_name || '',
+      role: role,
+      status: (rawUser.status === 'banned' ? 'banned' : 'active') as 'active' | 'banned',
+    };
   },
 
   async signOut(): Promise<void> {

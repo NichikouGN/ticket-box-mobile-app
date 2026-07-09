@@ -1,12 +1,38 @@
-import React from 'react';
-import { StyleSheet, Pressable, ScrollView } from 'react-native';
+import React, { useState, useCallback } from 'react';
+import { StyleSheet, Pressable, ScrollView, ActivityIndicator } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useAuth } from '@/hooks/useAuth';
+import { useFocusEffect } from 'expo-router';
+import { authService } from '@/services/auth';
+import { User, UserRole } from '@/types/auth';
+import { useTheme } from '@/hooks/use-theme';
 
 export default function ProfileScreen() {
   const { logout } = useAuth();
+  const theme = useTheme();
+
+  const [profile, setProfile] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  const fetchProfile = async () => {
+    try {
+      setLoading(true);
+      const data = await authService.getProfile();
+      setProfile(data);
+    } catch (err) {
+      console.error('Failed to load user profile:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchProfile();
+    }, [])
+  );
 
   const handleLogout = async () => {
     try {
@@ -16,15 +42,37 @@ export default function ProfileScreen() {
     }
   };
 
+  const getRoleText = (role?: UserRole) => {
+    if (role === 'staff') return 'Nhân viên soát vé (Staff)';
+    if (role === 'organizer') return 'Ban tổ chức (Organizer)';
+    return 'Khán giả (Audience)';
+  };
+
+  if (loading && !profile) {
+    return (
+      <ThemedView style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={theme.text} />
+        <ThemedText style={{ marginTop: Spacing.two }} themeColor="textSecondary">
+          Đang tải thông tin cá nhân...
+        </ThemedText>
+      </ThemedView>
+    );
+  }
+
+  const initialChar = profile?.fullName ? profile.fullName.charAt(0).toUpperCase() : 'U';
+
   return (
     <ScrollView style={styles.scrollContainer} contentContainerStyle={styles.scrollContent}>
       <ThemedView style={styles.container}>
         <ThemedView style={styles.profileHeader}>
           <ThemedView style={styles.avatarPlaceholder}>
-            <ThemedText style={styles.avatarText}>U</ThemedText>
+            <ThemedText style={styles.avatarText}>{initialChar}</ThemedText>
           </ThemedView>
-          <ThemedText type="subtitle">Nguyễn Văn A</ThemedText>
-          <ThemedText themeColor="textSecondary">Khán giả (Audience)</ThemedText>
+          <ThemedText type="subtitle">{profile?.fullName || 'Người Dùng'}</ThemedText>
+          <ThemedText themeColor="textSecondary">{getRoleText(profile?.role)}</ThemedText>
+          <ThemedText style={styles.emailText} themeColor="textSecondary">
+            {profile?.email}
+          </ThemedText>
         </ThemedView>
 
         <ThemedView style={styles.actionsList}>
@@ -91,5 +139,14 @@ const styles = StyleSheet.create({
   logoutText: {
     color: '#e53935',
     fontWeight: 'bold',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emailText: {
+    fontSize: 14,
+    marginTop: Spacing.half,
   },
 });
