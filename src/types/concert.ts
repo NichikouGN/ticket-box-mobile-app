@@ -1,7 +1,13 @@
+export interface Artist {
+  id: string;
+  name: string;
+  verifiedBio: string | null;
+}
+
 export interface Concert {
   id: string;
   title: string;
-  artists: string[];
+  artists: Artist[];
   venue: string;
   startTime: string;
   status: string;
@@ -42,7 +48,7 @@ export interface ConcertListResponse {
 export interface RawConcert {
   id: string;
   title: string;
-  artists: string[];
+  artists: (string | Artist)[];
   venue: string;
   start_time?: string;
   eventDate?: string;

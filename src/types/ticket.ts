@@ -1,10 +1,17 @@
 export interface RawTicket {
-  id: string;
-  concert_id: string;
-  ticket_type_id: string;
+  ticketId: string;
+  concertId: string;
+  ticketTypeId: string;
   status: string;
-  created_at: string;
-  used_at: string | null;
+  createdAt: string;
+  usedAt: string | null;
+  ticketName?: string | null;
+  concertDetails?: {
+    id: string;
+    title: string;
+    venue: string;
+    eventDate: string;
+  } | null;
 }
 
 export interface Ticket {
@@ -14,6 +21,13 @@ export interface Ticket {
   status: string;
   createdAt: string;
   usedAt: string | null;
+  ticketName?: string | null;
+  concertDetails?: {
+    id: string;
+    title: string;
+    venue: string;
+    eventDate: string;
+  } | null;
 }
 
 export interface TicketPayload {
@@ -26,9 +40,16 @@ export interface TicketPayload {
   signature: string;
 }
 
+export interface TicketMeta {
+  total: number;
+  page: number;
+  limit: number;
+}
+
 export interface TicketListResponse {
   success: boolean;
   data: RawTicket[];
+  meta: TicketMeta;
 }
 
 export interface TicketDetailResponse {

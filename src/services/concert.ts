@@ -1,5 +1,6 @@
 import { apiClient } from './api';
 import { 
+  Artist,
   Concert, 
   ConcertListResponse, 
   ConcertTicketsResponse, 
@@ -8,10 +9,25 @@ import {
 } from '@/types/concert';
 
 const mapConcert = (raw: RawConcert): Concert => {
+  const mappedArtists: Artist[] = (raw.artists || []).map((art) => {
+    if (typeof art === 'string') {
+      return {
+        id: art,
+        name: art,
+        verifiedBio: null,
+      };
+    }
+    return {
+      id: art.id,
+      name: art.name,
+      verifiedBio: art.verifiedBio || null,
+    };
+  });
+
   return {
     id: raw.id,
     title: raw.title,
-    artists: raw.artists || [],
+    artists: mappedArtists,
     venue: raw.venue,
     startTime: raw.eventDate || (raw as any).event_date || raw.start_time || '',
     status: raw.status,

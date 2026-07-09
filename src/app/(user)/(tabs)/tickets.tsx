@@ -17,8 +17,8 @@ export default function MyTicketsScreen() {
 
   const fetchTickets = async () => {
     try {
-      const data = await ticketService.getTickets();
-      setTickets(data);
+      const data = await ticketService.getTickets(1, 100);
+      setTickets(data.tickets);
     } catch (error) {
       console.error('Failed to fetch tickets', error);
       Alert.alert('Lỗi', 'Không thể tải danh sách vé của bạn.');
@@ -39,40 +39,57 @@ export default function MyTicketsScreen() {
     setRefreshing(false);
   };
 
-  const renderItem = ({ item }: { item: Ticket }) => (
-    <Pressable
-      onPress={() => router.push(`/(user)/ticket/${item.ticketId}`)}
-      style={({ pressed }) => [
-        styles.ticketCard,
-        { 
-          backgroundColor: theme.backgroundElement,
-          borderColor: theme.backgroundSelected,
-        },
-        pressed && styles.ticketCardPressed,
-      ]}
-    >
-      <ThemedView type="backgroundSelected" style={styles.ticketHeader}>
-        <ThemedText style={styles.ticketType}>Mã Hạng Vé: {item.ticketTypeId.substring(0, 8)}...</ThemedText>
-        <ThemedText style={[styles.statusText, { color: item.status === 'USED' ? '#e53935' : '#43a047' }]}>
-          {item.status === 'USED' ? 'Đã soát vé' : 'Chưa soát vé'}
-        </ThemedText>
-      </ThemedView>
+  const renderItem = ({ item }: { item: Ticket }) => {
+    const isUsed = item.status === 'USED';
+    const ticketName = item.ticketName || `Hạng vé: ${item.ticketTypeId.substring(0, 8)}...`;
+    const concertTitle = item.concertDetails?.title || `Sự kiện: ${item.concertId.substring(0, 8)}...`;
+    const venue = item.concertDetails?.venue || 'Địa điểm: Đang cập nhật';
 
-      <ThemedView type="backgroundElement" style={styles.ticketBody}>
-        <ThemedText type="smallBold" style={styles.concertTitle}>Mã Vé: {item.ticketId}</ThemedText>
-        <ThemedText style={styles.infoText} themeColor="textSecondary">🎤 Mã Sự Kiện: {item.concertId}</ThemedText>
-        <ThemedText style={styles.infoText} themeColor="textSecondary">
-          📅 Ngày mua: {new Date(item.createdAt).toLocaleString('vi-VN', {
-            hour: '2-digit',
-            minute: '2-digit',
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric',
-          })}
-        </ThemedText>
-      </ThemedView>
-    </Pressable>
-  );
+    let eventDateStr = 'Thời gian: Đang cập nhật';
+    if (item.concertDetails?.eventDate) {
+      try {
+        eventDateStr = new Date(item.concertDetails.eventDate).toLocaleString('vi-VN', {
+          hour: '2-digit',
+          minute: '2-digit',
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric',
+        });
+      } catch (e) {
+        console.warn('Invalid event date:', item.concertDetails.eventDate, e);
+      }
+    }
+
+    return (
+      <Pressable
+        onPress={() => router.push(`/(user)/ticket/${item.ticketId}`)}
+        style={({ pressed }) => [
+          styles.ticketCard,
+          { 
+            backgroundColor: theme.backgroundElement,
+            borderColor: theme.backgroundSelected,
+          },
+          pressed && styles.ticketCardPressed,
+        ]}
+      >
+        <ThemedView type="backgroundSelected" style={styles.ticketHeader}>
+          <ThemedText style={styles.ticketType}>{ticketName}</ThemedText>
+          <ThemedText style={[styles.statusText, { color: isUsed ? '#e53935' : '#43a047' }]}>
+            {isUsed ? 'Đã soát vé' : 'Chưa soát vé'}
+          </ThemedText>
+        </ThemedView>
+
+        <ThemedView type="backgroundElement" style={styles.ticketBody}>
+          <ThemedText type="smallBold" style={styles.concertTitle}>{concertTitle}</ThemedText>
+          <ThemedText style={styles.infoText} themeColor="textSecondary">📍 {venue}</ThemedText>
+          <ThemedText style={styles.infoText} themeColor="textSecondary">📅 Biểu diễn: {eventDateStr}</ThemedText>
+          <ThemedText style={[styles.infoText, { fontSize: 11, marginTop: Spacing.half }]} themeColor="textSecondary">
+            Mã Vé: {item.ticketId}
+          </ThemedText>
+        </ThemedView>
+      </Pressable>
+    );
+  };
 
   if (loading && !refreshing) {
     return (

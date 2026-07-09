@@ -1,23 +1,34 @@
 import { apiClient } from './api';
-import { RawTicket, Ticket, TicketPayload } from '@/types/ticket';
+import { RawTicket, Ticket, TicketPayload, TicketListResponse, TicketMeta } from '@/types/ticket';
 
 const mapTicket = (raw: RawTicket): Ticket => ({
-  ticketId: raw.id,
-  concertId: raw.concert_id,
-  ticketTypeId: raw.ticket_type_id,
+  ticketId: raw.ticketId,
+  concertId: raw.concertId,
+  ticketTypeId: raw.ticketTypeId,
   status: raw.status,
-  createdAt: raw.created_at,
-  usedAt: raw.used_at,
+  createdAt: raw.createdAt,
+  usedAt: raw.usedAt,
+  ticketName: raw.ticketName || null,
+  concertDetails: raw.concertDetails ? {
+    id: raw.concertDetails.id,
+    title: raw.concertDetails.title,
+    venue: raw.concertDetails.venue,
+    eventDate: raw.concertDetails.eventDate,
+  } : null,
 });
 
 export const ticketService = {
-  async getTickets(): Promise<Ticket[]> {
-    const response = await apiClient.get<{ success: boolean; data: RawTicket[] }>('/tickets');
-    const responseData = response.data?.data || response.data || [];
-    if (Array.isArray(responseData)) {
-      return responseData.map(mapTicket);
-    }
-    return [];
+  async getTickets(page = 1, limit = 100): Promise<{ tickets: Ticket[]; meta: TicketMeta | null }> {
+    const response = await apiClient.get<TicketListResponse>('/tickets', {
+      params: { page, limit }
+    });
+    const responseData = response.data?.data || [];
+    const meta = response.data?.meta || null;
+
+    return {
+      tickets: Array.isArray(responseData) ? responseData.map(mapTicket) : [],
+      meta
+    };
   },
 
   async getTicketDetail(ticketId: string): Promise<TicketPayload> {

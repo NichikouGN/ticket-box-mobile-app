@@ -74,7 +74,9 @@ export default function ConcertDetailScreen() {
           <ThemedText style={styles.infoText}>
             📅 **Thời gian:** {new Date(concert.startTime).toLocaleString('vi-VN')}
           </ThemedText>
-          <ThemedText style={styles.infoText}>🎤 **Nghệ sĩ:** {concert.artists.join(', ')}</ThemedText>
+          <ThemedText style={styles.infoText}>
+            🎤 **Nghệ sĩ:** {concert.artists.map(a => a.name).join(', ')}
+          </ThemedText>
         </ThemedView>
 
         {concert.description && (
@@ -87,9 +89,14 @@ export default function ConcertDetailScreen() {
         {concert.artists && concert.artists.length > 0 && (
           <>
             <ThemedText type="subtitle" style={styles.sectionTitle}>Tiểu Sử Nghệ Sĩ</ThemedText>
-            <ThemedText style={styles.artistBio}>
-              {concert.artist?.bio || 'Đang cập nhật thông tin nghệ sĩ.'}
-            </ThemedText>
+            {concert.artists.map((art, idx) => (
+              <View key={art.id || idx} style={{ marginTop: Spacing.two }}>
+                <ThemedText style={{ fontWeight: 'bold', fontSize: 15 }}>👤 {art.name}</ThemedText>
+                <ThemedText style={styles.artistBio}>
+                  {art.verifiedBio || 'Đang cập nhật thông tin nghệ sĩ.'}
+                </ThemedText>
+              </View>
+            ))}
           </>
         )}
 

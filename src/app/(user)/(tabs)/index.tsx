@@ -61,7 +61,7 @@ export default function ConcertListScreen() {
 
   const filteredConcerts = concerts.filter((c) =>
     c.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    c.artists.some((artist) => artist.toLowerCase().includes(searchQuery.toLowerCase()))
+    c.artists.some((artist) => artist.name.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
   const renderItem = ({ item }: { item: Concert }) => (
@@ -80,7 +80,7 @@ export default function ConcertListScreen() {
       <ThemedView style={styles.cardInfo}>
         <ThemedText type="subtitle" style={styles.cardTitle}>{item.title}</ThemedText>
         <ThemedText style={styles.artists} themeColor="textSecondary">
-          Nghệ sĩ: {item.artists.join(', ')}
+          Nghệ sĩ: {item.artists.map(a => a.name).join(', ')}
         </ThemedText>
         <ThemedText style={styles.venue} themeColor="textSecondary">
           📍 {item.venue}

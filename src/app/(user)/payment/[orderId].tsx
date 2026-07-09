@@ -161,7 +161,20 @@ export default function PaymentScreen() {
     // Deep Link Linking listener
     const handleDeepLink = (event: { url: string }) => {
       console.log('Received deep link redirect:', event.url);
-      // Keep the spinner showing and let the SSE connection update the status
+      try {
+        const match = event.url.match(/[?&]orderId=([^&]+)/);
+        if (match && match[1]) {
+          const extractedOrderId = match[1];
+          console.log('Extracted orderId from deep link:', extractedOrderId);
+          if (extractedOrderId === orderId) {
+            console.log('Extracted orderId matches the current orderId. Keeping spinner and waiting for SSE.');
+          } else {
+            console.warn(`Extracted orderId (${extractedOrderId}) does not match current orderId (${orderId}).`);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to parse deep link URL:', err);
+      }
     };
 
     const linkingSubscription = Linking.addEventListener('url', handleDeepLink);
