@@ -71,12 +71,14 @@ export default function ConcertDetailScreen() {
         <ThemedText type="title" style={styles.title}>{concert.title}</ThemedText>
 
         <ThemedView type="backgroundElement" style={styles.infoCard}>
-          <ThemedText style={styles.infoText}>📍 **Địa điểm:** {concert.venue}</ThemedText>
           <ThemedText style={styles.infoText}>
-            📅 **Thời gian:** {new Date(concert.startTime).toLocaleString('vi-VN')}
+            📍 <ThemedText style={{ fontWeight: 'bold' }}>Địa điểm:</ThemedText> {concert.venue}
           </ThemedText>
           <ThemedText style={styles.infoText}>
-            🎤 **Nghệ sĩ:** {concert.artists.map(a => a.name).join(', ')}
+            📅 <ThemedText style={{ fontWeight: 'bold' }}>Thời gian:</ThemedText> {new Date(concert.startTime).toLocaleString('vi-VN')}
+          </ThemedText>
+          <ThemedText style={styles.infoText}>
+            🎤 <ThemedText style={{ fontWeight: 'bold' }}>Nghệ sĩ:</ThemedText> {concert.artists.map(a => a.name).join(', ')}
           </ThemedText>
         </ThemedView>
 
@@ -153,13 +155,13 @@ export default function ConcertDetailScreen() {
             <ThemedView type="backgroundElement" style={styles.zoneDetailCard}>
               <ThemedText style={styles.zoneDetailTitle}>Hạng vé: {activeType.name}</ThemedText>
               <ThemedText style={styles.zoneDetailText}>
-                Giá vé: **{activeType.price.toLocaleString('vi-VN')} VNĐ**
+                Giá vé: <ThemedText style={{ fontWeight: 'bold' }}>{activeType.price.toLocaleString('vi-VN')} VNĐ</ThemedText>
               </ThemedText>
               <ThemedText style={styles.zoneDetailText}>
-                Số vé mua tối đa mỗi tài khoản: **{activeType.maxPerUser} vé**
+                Số vé mua tối đa mỗi tài khoản: <ThemedText style={{ fontWeight: 'bold' }}>{activeType.maxPerUser} vé</ThemedText>
               </ThemedText>
               <ThemedText style={styles.zoneDetailText}>
-                Số ghế còn trống: **{activeType.availableSeats} chỗ**
+                Số ghế còn trống: <ThemedText style={{ fontWeight: 'bold' }}>{activeType.availableSeats} chỗ</ThemedText>
               </ThemedText>
             </ThemedView>
           );

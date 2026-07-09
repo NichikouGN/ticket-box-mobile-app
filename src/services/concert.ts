@@ -24,6 +24,11 @@ const mapConcert = (raw: RawConcert): Concert => {
     };
   });
 
+  let rawImg = raw.thumbnailUrl || raw.thumbnail_url || (raw as any).coverImage || (raw as any).cover_image || '';
+  if (rawImg === 'null' || rawImg === 'undefined') {
+    rawImg = '';
+  }
+
   return {
     id: raw.id,
     title: raw.title,
@@ -31,7 +36,7 @@ const mapConcert = (raw: RawConcert): Concert => {
     venue: raw.venue,
     startTime: raw.eventDate || (raw as any).event_date || raw.start_time || '',
     status: raw.status,
-    thumbnailUrl: raw.thumbnailUrl || raw.thumbnail_url || (raw as any).coverImage || (raw as any).cover_image || '',
+    thumbnailUrl: rawImg,
     description: raw.description,
     artist: raw.artist?.name ? {
       name: raw.artist.name,
