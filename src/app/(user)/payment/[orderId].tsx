@@ -268,13 +268,17 @@ export default function PaymentScreen() {
         </ThemedView>
 
         <ThemedView type="backgroundElement" style={styles.detailsCard}>
-          <ThemedText style={styles.detailRow}>**Mã đơn hàng (Order ID):** {orderId}</ThemedText>
+          <ThemedText style={styles.detailRow}>
+            <ThemedText style={{ fontWeight: 'bold' }}>Mã đơn hàng (Order ID):</ThemedText> {orderId}
+          </ThemedText>
           {parsedTotalPrice > 0 && (
             <ThemedText style={styles.detailRow}>
-              **Số tiền cần trả:** {parsedTotalPrice.toLocaleString('vi-VN')} VNĐ
+              <ThemedText style={{ fontWeight: 'bold' }}>Số tiền cần trả:</ThemedText> {parsedTotalPrice.toLocaleString('vi-VN')} VNĐ
             </ThemedText>
           )}
-          <ThemedText style={styles.detailRow}>**Trạng thái thanh toán:** {status}</ThemedText>
+          <ThemedText style={styles.detailRow}>
+            <ThemedText style={{ fontWeight: 'bold' }}>Trạng thái thanh toán:</ThemedText> {status}
+          </ThemedText>
         </ThemedView>
 
         {paying ? (
