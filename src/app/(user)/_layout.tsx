@@ -23,6 +23,7 @@ export default function UserLayout() {
       <Stack.Screen name="concert/[id]" options={{ title: 'Chi Tiết Sự Kiện' }} />
       <Stack.Screen name="booking/[id]" options={{ title: 'Đặt Vé' }} />
       <Stack.Screen name="payment/[orderId]" options={{ title: 'Thanh Toán', headerLeft: () => null }} />
+      <Stack.Screen name="payment-success" options={{ title: 'Thanh Toán Thành Công', headerLeft: () => null, gestureEnabled: false }} />
       <Stack.Screen name="ticket/[id]" options={{ title: 'Vé Của Tôi' }} />
     </Stack>
   );
