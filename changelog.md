@@ -23,6 +23,38 @@ Tài liệu này ghi nhận toàn bộ lịch sử cập nhật, nâng cấp tí
 
 ## Lịch sử phiên bản (Version History)
 
+### v0.8.7: Màn Hình Thanh Toán Thành Công & Xử Lý Deep Link (2026-07-11)
+
+#### Bổ sung mới
+- **Màn hình Payment Success (`payment-success.tsx`):**
+  - Xây dựng giao diện phản hồi thành công sau thanh toán với icon checkmark màu xanh lá, hiển thị chi tiết mã đơn hàng (Order ID).
+  - Cung cấp nút bấm "Xem vé của tôi" giúp điều hướng trực tiếp người dùng về danh sách vé.
+- **Đăng ký định tuyến Expo Router:**
+  - Cấu hình tệp `src/app/(user)/_layout.tsx` cho màn hình `payment-success` với tiêu đề chuyên biệt, ẩn nút Back và vô hiệu hóa cử chỉ vuốt quay lại (`gestureEnabled: false`).
+
+---
+
+### v0.8.6: Soát Vé Từ Thư Viện, Tối Ưu QR & Nhãn Trạng Trạng Thái Vé (2026-07-11)
+
+#### Bổ sung mới
+- **Soát vé từ ảnh thư viện cho Staff:**
+  - Hỗ trợ nhân viên chọn hình ảnh mã QR từ thư viện thiết bị thông qua `expo-image-picker`.
+  - Quét và giải mã QR từ ảnh sử dụng phương thức native `Camera.scanFromURLAsync()` của `expo-camera`.
+- **Nhãn trạng thái "Vé đã được soát":**
+  - Kiểm tra trạng thái vé động. Nếu vé đã được soát (`USED`), ẩn hoàn toàn nút Lưu QR và nút Sao chép Raw QR, thay thế bằng nhãn thông báo đỏ nổi bật.
+- **Tên Concert lồng trong ảnh QR xuất ra:**
+  - Tái cấu trúc bọc mã QR SVG và tên concert dưới dạng SVG text vào một container `<Svg>` cha chung có nền trắng (`#ffffff`).
+  - Đảm bảo khi lưu QR về máy, bức ảnh chứa đầy đủ tên concert ở dưới mà không làm ảnh hưởng hay gây nhiễu mã QR khi quét.
+
+#### Sửa lỗi & Nâng cấp
+- **Khắc phục cảnh báo lỗi Deprecated API của Expo:**
+  - Loại bỏ hoàn toàn `writeAsStringAsync` cũ của `expo-file-system`, thay bằng API lớp `File` mới.
+  - Loại bỏ hoàn toàn `saveToLibraryAsync` của `expo-media-library`, thay bằng phương thức tạo tài sản `MediaLibrary.Asset.create()`.
+- **Cải thiện chất lượng QR xuất ra:**
+  - Cấu hình kích thước QR xuất ra tối thiểu là `300` cùng vùng đệm an toàn `quietZone={20}` và ép nền trắng tuyệt đối để tăng hiệu quả nhận diện của thiết bị quét.
+
+---
+
 ### v0.8.4: Hoàn Thiện VIP Check-in & Phát Hiện Lỗi Mapping Backend (2026-07-08)
 
 #### Bổ sung mới
