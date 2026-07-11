@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { StyleSheet, ActivityIndicator, Alert, View, ScrollView, Pressable } from 'react-native';
 import { ThemedText } from '@/components/themed-text';
 import { ThemedView } from '@/components/themed-view';
@@ -9,6 +9,8 @@ import { TicketPayload } from '@/types/ticket';
 import { useTheme } from '@/hooks/use-theme';
 import QRCode from 'react-native-qrcode-svg';
 import * as Clipboard from 'expo-clipboard';
+import { documentDirectory, writeAsStringAsync, EncodingType } from 'expo-file-system';
+import * as MediaLibrary from 'expo-media-library';
 
 export default function TicketDetailScreen() {
   const { id: ticketId } = useLocalSearchParams<{ id: string }>();
@@ -16,6 +18,8 @@ export default function TicketDetailScreen() {
   const [payload, setPayload] = useState<TicketPayload | null>(null);
   const [loading, setLoading] = useState(true);
   const [qrRaw, setQrRaw] = useState<string | null>(null);
+  const qrRef = useRef<any>(null);
+  const [savingQr, setSavingQr] = useState(false);
 
   useEffect(() => {
     const fetchTicketDetail = async () => {
@@ -53,6 +57,42 @@ export default function TicketDetailScreen() {
     );
   }
 
+  const handleSaveQr = async () => {
+    if (!qrRef.current || !payload || !payload.ticket) return;
+    
+    setSavingQr(true);
+    try {
+      const { status } = await MediaLibrary.requestPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Quyền truy cập', 'Ứng dụng cần được cấp quyền truy cập thư viện ảnh để tải mã QR về.');
+        setSavingQr(false);
+        return;
+      }
+
+      qrRef.current.toDataURL(async (dataURL: string) => {
+        try {
+          const ticketIdShort = payload.ticket.ticketId.substring(0, 8);
+          const filename = documentDirectory + `ticket_qr_${ticketIdShort}.png`;
+          await writeAsStringAsync(filename, dataURL, {
+            encoding: EncodingType.Base64,
+          });
+
+          await MediaLibrary.saveToLibraryAsync(filename);
+          Alert.alert('Thành Công', 'Đã lưu mã QR vé của bạn vào Thư viện ảnh!');
+        } catch (err) {
+          console.error('Failed to convert and save QR image', err);
+          Alert.alert('Lỗi', 'Không thể lưu mã QR. Vui lòng thử lại.');
+        } finally {
+          setSavingQr(false);
+        }
+      });
+    } catch (error) {
+      console.error('Error requesting MediaLibrary permission', error);
+      Alert.alert('Lỗi', 'Không thể kết nối với thư viện ảnh.');
+      setSavingQr(false);
+    }
+  };
+
   const { ticket } = payload;
 
   return (
@@ -82,6 +122,7 @@ export default function TicketDetailScreen() {
                   size={200}
                   color="#000000"
                   backgroundColor="#ffffff"
+                  getRef={(c) => { qrRef.current = c; }}
                 />
               </View>
             ) : (
@@ -91,18 +132,38 @@ export default function TicketDetailScreen() {
               Quét mã này tại cổng soát vé để vào sự kiện (Mã QR ký số ED25519)
             </ThemedText>
             {qrRaw && (
-              <Pressable
-                onPress={async () => {
-                  await Clipboard.setStringAsync(qrRaw);
-                  Alert.alert('Đã Sao Chép', 'Đã sao chép raw QR token (JSON chứa ticket & signature) để test check-in.');
-                }}
-                style={({ pressed }) => [
-                  styles.copyDevButton,
-                  pressed && styles.copyDevButtonPressed,
-                ]}
-              >
-                <ThemedText style={styles.copyDevButtonText}>📋 Sao chép Raw QR (Dev Test)</ThemedText>
-              </Pressable>
+              <View style={styles.buttonContainer}>
+                <Pressable
+                  onPress={handleSaveQr}
+                  disabled={savingQr}
+                  style={({ pressed }) => [
+                    styles.saveButton,
+                    pressed && styles.saveButtonPressed,
+                    { backgroundColor: theme.text }
+                  ]}
+                >
+                  {savingQr ? (
+                    <ActivityIndicator size="small" color={theme.background} />
+                  ) : (
+                    <ThemedText style={[styles.saveButtonText, { color: theme.background }]}>
+                      💾 Lưu mã QR vào Thư viện
+                    </ThemedText>
+                  )}
+                </Pressable>
+
+                <Pressable
+                  onPress={async () => {
+                    await Clipboard.setStringAsync(qrRaw);
+                    Alert.alert('Đã Sao Chép', 'Đã sao chép raw QR token (JSON chứa ticket & signature) để test check-in.');
+                  }}
+                  style={({ pressed }) => [
+                    styles.copyDevButton,
+                    pressed && styles.copyDevButtonPressed,
+                  ]}
+                >
+                  <ThemedText style={styles.copyDevButtonText}>📋 Sao chép Raw QR (Dev Test)</ThemedText>
+                </Pressable>
+              </View>
             )}
           </View>
 
@@ -244,9 +305,10 @@ const styles = StyleSheet.create({
     marginVertical: Spacing.two,
   },
   copyDevButton: {
-    marginTop: Spacing.three,
-    paddingVertical: Spacing.two,
-    paddingHorizontal: Spacing.four,
+    width: '80%',
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
     backgroundColor: '#3c87f7',
     borderRadius: Spacing.two,
   },
@@ -256,6 +318,32 @@ const styles = StyleSheet.create({
   copyDevButtonText: {
     color: '#ffffff',
     fontSize: 13,
+    fontWeight: 'bold',
+  },
+  buttonContainer: {
+    marginTop: Spacing.three,
+    width: '100%',
+    gap: Spacing.two,
+    alignItems: 'center',
+    backgroundColor: 'transparent',
+  },
+  saveButton: {
+    width: '80%',
+    height: 44,
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: Spacing.two,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 3,
+    elevation: 1,
+  },
+  saveButtonPressed: {
+    opacity: 0.8,
+  },
+  saveButtonText: {
+    fontSize: 14,
     fontWeight: 'bold',
   },
 });

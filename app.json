@@ -17,7 +17,8 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "predictiveBackGestureEnabled": false
+      "predictiveBackGestureEnabled": false,
+      "package": "com.kienha5.ticketboxmobileapp"
     },
     "web": {
       "output": "static",
@@ -35,7 +36,20 @@
           }
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Cho phép ứng dụng truy cập thư viện ảnh để tải lên mã QR soát vé."
+        }
+      ],
+      [
+        "expo-media-library",
+        {
+          "photosPermission": "Cho phép ứng dụng truy cập thư viện ảnh để lưu mã QR vé.",
+          "savePhotosPermission": "Cho phép ứng dụng lưu mã QR vé vào thư viện ảnh."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

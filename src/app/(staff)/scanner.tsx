@@ -7,10 +7,11 @@ import { checkinService } from '@/services/checkin';
 import { concertService } from '@/services/concert';
 import { CheckinResult } from '@/types/checkin';
 import { Concert } from '@/types/concert';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { CameraView, useCameraPermissions, scanFromURLAsync } from 'expo-camera';
 import { Stack, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, FlatList, Linking, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import * as ImagePicker from 'expo-image-picker';
 
 export default function ScannerScreen() {
   const router = useRouter();
@@ -219,6 +220,54 @@ export default function ScannerScreen() {
     setScanning(true);
   };
 
+  const handleUploadQr = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (status !== 'granted') {
+        Alert.alert('Quyền truy cập', 'Ứng dụng cần quyền truy cập thư viện ảnh để tải ảnh QR lên.');
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: false,
+        quality: 1,
+      });
+
+      if (result.canceled || !result.assets || result.assets.length === 0) {
+        return;
+      }
+
+      const imageUri = result.assets[0].uri;
+      setVerifying(true);
+      setScanning(false);
+
+      console.log('Scanning barcode from image URI:', imageUri);
+      const scanResults = await scanFromURLAsync(imageUri, ['qr']);
+      console.log('Scan results from image:', scanResults);
+
+      if (scanResults && scanResults.length > 0) {
+        const qrRawContent = scanResults[0].data;
+        if (qrRawContent) {
+          await processQR(qrRawContent);
+        } else {
+          Alert.alert('Không thể nhận diện', 'Không tìm thấy dữ liệu hợp lệ trong mã QR.');
+          setScanning(true);
+          setVerifying(false);
+        }
+      } else {
+        Alert.alert('Không thể nhận diện', 'Không tìm thấy mã QR nào trong ảnh đã chọn.');
+        setScanning(true);
+        setVerifying(false);
+      }
+    } catch (err) {
+      console.error('Error scanning QR from image file:', err);
+      Alert.alert('Lỗi', 'Có lỗi xảy ra khi xử lý ảnh QR. Vui lòng thử lại.');
+      setScanning(true);
+      setVerifying(false);
+    }
+  };
+
   return (
     <ThemedView style={styles.container}>
       <Stack.Screen
@@ -371,7 +420,17 @@ export default function ScannerScreen() {
       {/* Emulator Testing panel (shown when camera is active) */}
       {scanning && !scanResult && !verifying && (
         <ThemedView type="backgroundElement" style={styles.controlPanel}>
-          <ThemedText style={styles.panelTitle}>Emulator Support / Giả lập soát vé</ThemedText>
+          <ThemedText style={styles.panelTitle}>Soát vé dự phòng / Giả lập</ThemedText>
+
+          <Pressable
+            onPress={handleUploadQr}
+            style={({ pressed }) => [
+              styles.uploadButton,
+              pressed && styles.buttonPressed,
+            ]}
+          >
+            <ThemedText style={styles.uploadButtonText}>🖼️ Tải Ảnh QR từ Thư viện</ThemedText>
+          </Pressable>
 
           <Pressable
             onPress={handleMockScan}
@@ -695,5 +754,17 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontWeight: 'bold',
     fontSize: 12.5,
+  },
+  uploadButton: {
+    height: 40,
+    backgroundColor: '#008b8b',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderRadius: Spacing.two,
+  },
+  uploadButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
+    fontSize: 13,
   },
 });
