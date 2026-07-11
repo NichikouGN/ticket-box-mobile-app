@@ -69,16 +69,16 @@ export default function PaymentScreen() {
       setInitLoading(true);
       setInitError(null);
 
-      // Phase 1 Timeout: 30 seconds
+      // Phase 1 Timeout: 45 seconds to handle Backend Stripe Cold Starts
       phase1TimeoutId = setTimeout(() => {
-        console.log('Phase 1 SSE Timeout (30s) reached');
+        console.log('Phase 1 SSE Timeout (45s) reached');
         setInitError('Không thể khởi tạo thanh toán. Vui lòng thử lại.');
         setInitLoading(false);
         if (ssePaymentUrlCleanup) {
           ssePaymentUrlCleanup();
           ssePaymentUrlCleanup = null;
         }
-      }, 30000);
+      }, 45000);
 
       if (orderId) {
         console.log('Subscribing to Phase 1: payment-url for order:', orderId);
@@ -237,7 +237,9 @@ export default function PaymentScreen() {
     return (
       <ThemedView style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={theme.text} />
-        <ThemedText style={{ marginTop: Spacing.two }}>Đang khởi tạo luồng thanh toán...</ThemedText>
+        <ThemedText style={{ marginTop: Spacing.two, textAlign: 'center', paddingHorizontal: Spacing.four }}>
+          Đang kết nối với cổng thanh toán an toàn, vui lòng chờ trong giây lát và không thoát trang...
+        </ThemedText>
       </ThemedView>
     );
   }
