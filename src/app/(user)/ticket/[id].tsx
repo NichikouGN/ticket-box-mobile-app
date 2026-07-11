@@ -5,6 +5,7 @@ import { ThemedView } from '@/components/themed-view';
 import { Spacing } from '@/constants/theme';
 import { useLocalSearchParams } from 'expo-router';
 import { ticketService } from '@/services/ticket';
+import { concertService } from '@/services/concert';
 import { TicketPayload } from '@/types/ticket';
 import { useTheme } from '@/hooks/use-theme';
 import QRCode from 'react-native-qrcode-svg';
@@ -20,6 +21,7 @@ export default function TicketDetailScreen() {
   const [qrRaw, setQrRaw] = useState<string | null>(null);
   const qrRef = useRef<any>(null);
   const [savingQr, setSavingQr] = useState(false);
+  const [concertTitle, setConcertTitle] = useState<string>('');
 
   useEffect(() => {
     const fetchTicketDetail = async () => {
@@ -28,8 +30,16 @@ export default function TicketDetailScreen() {
       try {
         const detail = await ticketService.getTicketDetail(ticketId);
         setPayload(detail);
-        // Standard Ed25519 requires passing the whole object { ticket, signature } as the QR value
         setQrRaw(JSON.stringify(detail));
+
+        if (detail.ticket && detail.ticket.concertId) {
+          try {
+            const concert = await concertService.getConcertDetail(detail.ticket.concertId);
+            setConcertTitle(concert.title);
+          } catch (cErr) {
+            console.warn('[TicketDetail] Failed to load concert title', cErr);
+          }
+        }
       } catch (error) {
         console.error('Failed to load ticket detail', error);
         Alert.alert('Lỗi', 'Không thể tải chi tiết vé.');
@@ -130,6 +140,11 @@ export default function TicketDetailScreen() {
             ) : (
               <ActivityIndicator size="small" color="#000" />
             )}
+            {concertTitle ? (
+              <ThemedText style={styles.concertNameLabel}>
+                🎵 {concertTitle}
+              </ThemedText>
+            ) : null}
             <ThemedText style={styles.qrHint} themeColor="textSecondary">
               Quét mã này tại cổng soát vé để vào sự kiện (Mã QR ký số ED25519)
             </ThemedText>
@@ -271,6 +286,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     textAlign: 'center',
     marginTop: Spacing.one,
+  },
+  concertNameLabel: {
+    fontSize: 15,
+    fontWeight: 'bold',
+    marginVertical: Spacing.two,
+    textAlign: 'center',
   },
   infoSection: {
     padding: Spacing.three,
