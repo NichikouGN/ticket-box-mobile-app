@@ -36,6 +36,7 @@ export interface TicketPayload {
     userId: string;
     concertId: string;
     ticketTypeId: string;
+    status?: string;
   };
   signature: string;
 }

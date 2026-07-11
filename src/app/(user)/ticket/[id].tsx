@@ -12,6 +12,7 @@ import QRCode from 'react-native-qrcode-svg';
 import * as Clipboard from 'expo-clipboard';
 import { File, Paths, EncodingType } from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
+import Svg, { Rect, Text as SvgText, G } from 'react-native-svg';
 
 export default function TicketDetailScreen() {
   const { id: ticketId } = useLocalSearchParams<{ id: string }>();
@@ -128,14 +129,36 @@ export default function TicketDetailScreen() {
           <View style={styles.qrSection}>
             {qrRaw ? (
               <View style={styles.qrWrapper}>
-                <QRCode
-                  value={qrRaw}
-                  size={300}
-                  color="#000000"
-                  backgroundColor="#ffffff"
-                  quietZone={20}
-                  getRef={(c) => { qrRef.current = c; }}
-                />
+                <Svg
+                  ref={qrRef}
+                  width={340}
+                  height={395}
+                  viewBox="0 0 340 395"
+                >
+                  <Rect x={0} y={0} width={340} height={395} fill="#ffffff" />
+                  <G x={0} y={0}>
+                    <QRCode
+                      value={qrRaw}
+                      size={300}
+                      color="#000000"
+                      backgroundColor="#ffffff"
+                      quietZone={20}
+                    />
+                  </G>
+                  {concertTitle ? (
+                    <SvgText
+                      x={170}
+                      y={365}
+                      fontSize={15}
+                      fontWeight="bold"
+                      fill="#000000"
+                      textAnchor="middle"
+                      fontFamily="System"
+                    >
+                      {concertTitle.length > 30 ? concertTitle.substring(0, 27) + '...' : concertTitle}
+                    </SvgText>
+                  ) : null}
+                </Svg>
               </View>
             ) : (
               <ActivityIndicator size="small" color="#000" />
@@ -149,38 +172,44 @@ export default function TicketDetailScreen() {
               Quét mã này tại cổng soát vé để vào sự kiện (Mã QR ký số ED25519)
             </ThemedText>
             {qrRaw && (
-              <View style={styles.buttonContainer}>
-                <Pressable
-                  onPress={handleSaveQr}
-                  disabled={savingQr}
-                  style={({ pressed }) => [
-                    styles.saveButton,
-                    pressed && styles.saveButtonPressed,
-                    { backgroundColor: theme.text }
-                  ]}
-                >
-                  {savingQr ? (
-                    <ActivityIndicator size="small" color={theme.background} />
-                  ) : (
-                    <ThemedText style={[styles.saveButtonText, { color: theme.background }]}>
-                      💾 Lưu mã QR vào Thư viện
-                    </ThemedText>
-                  )}
-                </Pressable>
+              ticket.status === 'USED' || ticket.status === 'used' ? (
+                <View style={styles.checkedInLabelContainer}>
+                  <ThemedText style={styles.checkedInText}>✔️ Vé đã được soát</ThemedText>
+                </View>
+              ) : (
+                <View style={styles.buttonContainer}>
+                  <Pressable
+                    onPress={handleSaveQr}
+                    disabled={savingQr}
+                    style={({ pressed }) => [
+                      styles.saveButton,
+                      pressed && styles.saveButtonPressed,
+                      { backgroundColor: theme.text }
+                    ]}
+                  >
+                    {savingQr ? (
+                      <ActivityIndicator size="small" color={theme.background} />
+                    ) : (
+                      <ThemedText style={[styles.saveButtonText, { color: theme.background }]}>
+                        💾 Lưu mã QR vào Thư viện
+                      </ThemedText>
+                    )}
+                  </Pressable>
 
-                <Pressable
-                  onPress={async () => {
-                    await Clipboard.setStringAsync(qrRaw);
-                    Alert.alert('Đã Sao Chép', 'Đã sao chép raw QR token (JSON chứa ticket & signature) để test check-in.');
-                  }}
-                  style={({ pressed }) => [
-                    styles.copyDevButton,
-                    pressed && styles.copyDevButtonPressed,
-                  ]}
-                >
-                  <ThemedText style={styles.copyDevButtonText}>📋 Sao chép Raw QR (Dev Test)</ThemedText>
-                </Pressable>
-              </View>
+                  <Pressable
+                    onPress={async () => {
+                      await Clipboard.setStringAsync(qrRaw);
+                      Alert.alert('Đã Sao Chép', 'Đã sao chép raw QR token (JSON chứa ticket & signature) để test check-in.');
+                    }}
+                    style={({ pressed }) => [
+                      styles.copyDevButton,
+                      pressed && styles.copyDevButtonPressed,
+                    ]}
+                  >
+                    <ThemedText style={styles.copyDevButtonText}>📋 Sao chép Raw QR (Dev Test)</ThemedText>
+                  </Pressable>
+                </View>
+              )
             )}
           </View>
 
@@ -272,8 +301,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
   },
   qrWrapper: {
-    padding: Spacing.three,
-    backgroundColor: '#ffffff',
     borderRadius: Spacing.two,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
@@ -281,6 +308,24 @@ const styles = StyleSheet.create({
     shadowRadius: 5,
     elevation: 2,
     marginBottom: Spacing.two,
+    overflow: 'hidden',
+  },
+  checkedInLabelContainer: {
+    marginTop: Spacing.four,
+    paddingVertical: Spacing.two,
+    paddingHorizontal: Spacing.six,
+    backgroundColor: 'rgba(229, 57, 53, 0.08)',
+    borderRadius: Spacing.two,
+    borderWidth: 1,
+    borderColor: 'rgba(229, 57, 53, 0.2)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '80%',
+  },
+  checkedInText: {
+    color: '#e53935',
+    fontWeight: 'bold',
+    fontSize: 15,
   },
   qrHint: {
     fontSize: 12,
