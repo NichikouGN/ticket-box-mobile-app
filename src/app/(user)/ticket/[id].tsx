@@ -120,9 +120,10 @@ export default function TicketDetailScreen() {
               <View style={styles.qrWrapper}>
                 <QRCode
                   value={qrRaw}
-                  size={200}
+                  size={300}
                   color="#000000"
                   backgroundColor="#ffffff"
+                  quietZone={20}
                   getRef={(c) => { qrRef.current = c; }}
                 />
               </View>
