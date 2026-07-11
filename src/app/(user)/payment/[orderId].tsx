@@ -69,16 +69,16 @@ export default function PaymentScreen() {
       setInitLoading(true);
       setInitError(null);
 
-      // Phase 1 Timeout: 45 seconds to handle Backend Stripe Cold Starts
+      // Phase 1 Timeout: 60 seconds - Backend relay chain có thể mất 15-30 giây trong điều kiện tải cao
       phase1TimeoutId = setTimeout(() => {
-        console.log('Phase 1 SSE Timeout (45s) reached');
+        console.log('Phase 1 SSE Timeout (60s) reached');
         setInitError('Không thể khởi tạo thanh toán. Vui lòng thử lại.');
         setInitLoading(false);
         if (ssePaymentUrlCleanup) {
           ssePaymentUrlCleanup();
           ssePaymentUrlCleanup = null;
         }
-      }, 45000);
+      }, 60000);
 
       if (orderId) {
         console.log('Subscribing to Phase 1: payment-url for order:', orderId);
