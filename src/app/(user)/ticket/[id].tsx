@@ -9,7 +9,7 @@ import { TicketPayload } from '@/types/ticket';
 import { useTheme } from '@/hooks/use-theme';
 import QRCode from 'react-native-qrcode-svg';
 import * as Clipboard from 'expo-clipboard';
-import { documentDirectory, writeAsStringAsync, EncodingType } from 'expo-file-system';
+import { File, Paths, EncodingType } from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
 
 export default function TicketDetailScreen() {
@@ -72,10 +72,11 @@ export default function TicketDetailScreen() {
       qrRef.current.toDataURL(async (dataURL: string) => {
         try {
           const ticketIdShort = payload.ticket.ticketId.substring(0, 8);
-          const filename = documentDirectory + `ticket_qr_${ticketIdShort}.png`;
-          await writeAsStringAsync(filename, dataURL, {
+          const file = new File(Paths.document, `ticket_qr_${ticketIdShort}.png`);
+          file.write(dataURL, {
             encoding: EncodingType.Base64,
           });
+          const filename = file.uri;
 
           await MediaLibrary.saveToLibraryAsync(filename);
           Alert.alert('Thành Công', 'Đã lưu mã QR vé của bạn vào Thư viện ảnh!');
