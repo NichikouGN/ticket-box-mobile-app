@@ -78,7 +78,7 @@ export default function TicketDetailScreen() {
           });
           const filename = file.uri;
 
-          await MediaLibrary.saveToLibraryAsync(filename);
+          await MediaLibrary.Asset.create(filename);
           Alert.alert('Thành Công', 'Đã lưu mã QR vé của bạn vào Thư viện ảnh!');
         } catch (err) {
           console.error('Failed to convert and save QR image', err);
