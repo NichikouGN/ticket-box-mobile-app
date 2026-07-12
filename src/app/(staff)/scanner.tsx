@@ -294,7 +294,7 @@ export default function ScannerScreen() {
               >
                 <ThemedText style={styles.headerVipBtnText}>👑 Khách VIP</ThemedText>
               </Pressable>
-              <Pressable onPress={handleLogout} style={styles.headerLogoutBtnCompact}>
+              <Pressable onPress={() => setSelectedConcert(null)} style={styles.headerLogoutBtnCompact}>
                 <ThemedText style={styles.headerLogoutBtnTextCompact}>Thoát</ThemedText>
               </Pressable>
             </View>
