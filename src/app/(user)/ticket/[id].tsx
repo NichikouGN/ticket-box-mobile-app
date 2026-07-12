@@ -9,7 +9,6 @@ import { concertService } from '@/services/concert';
 import { TicketPayload } from '@/types/ticket';
 import { useTheme } from '@/hooks/use-theme';
 import QRCode from 'react-native-qrcode-svg';
-import * as Clipboard from 'expo-clipboard';
 import { File, Paths, EncodingType } from 'expo-file-system';
 import * as MediaLibrary from 'expo-media-library';
 import Svg, { Rect, Text as SvgText, G } from 'react-native-svg';
@@ -194,19 +193,6 @@ export default function TicketDetailScreen() {
                         💾 Lưu mã QR vào Thư viện
                       </ThemedText>
                     )}
-                  </Pressable>
-
-                  <Pressable
-                    onPress={async () => {
-                      await Clipboard.setStringAsync(qrRaw);
-                      Alert.alert('Đã Sao Chép', 'Đã sao chép raw QR token (JSON chứa ticket & signature) để test check-in.');
-                    }}
-                    style={({ pressed }) => [
-                      styles.copyDevButton,
-                      pressed && styles.copyDevButtonPressed,
-                    ]}
-                  >
-                    <ThemedText style={styles.copyDevButtonText}>📋 Sao chép Raw QR (Dev Test)</ThemedText>
                   </Pressable>
                 </View>
               )
