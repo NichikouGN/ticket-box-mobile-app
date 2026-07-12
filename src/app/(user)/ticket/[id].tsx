@@ -86,9 +86,7 @@ export default function TicketDetailScreen() {
           file.write(dataURL, {
             encoding: EncodingType.Base64,
           });
-          const filename = file.uri;
-
-          await MediaLibrary.createAssetAsync(filename);
+          await MediaLibrary.Asset.create(file.uri);
           Alert.alert('Thành Công', 'Đã lưu mã QR vé của bạn vào Thư viện ảnh!');
         } catch (err) {
           console.error('Failed to convert and save QR image', err);
