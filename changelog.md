@@ -23,6 +23,21 @@ Tài liệu này ghi nhận toàn bộ lịch sử cập nhật, nâng cấp tí
 
 ## Lịch sử phiên bản (Version History)
 
+### v1.0.0: Phiên Bản Hoàn Thiện & Tối Ưu Trải Nghiệm Người Dùng (2026-07-12)
+
+#### Bổ sung mới & Cập nhật
+- **Nâng cấp Thư viện ảnh (Expo Media Library) thế hệ mới**:
+  - Chuyển đổi mã nguồn lưu ảnh QR vé từ hàm deprecated `createAssetAsync` sang API hướng đối tượng `MediaLibrary.Asset.create(file.uri)` tương thích hoàn toàn với Expo SDK mới.
+- **Dọn dẹp và tối ưu hóa bảo mật Client**:
+  - Loại bỏ nút sao chép mã JSON thô `📋 Sao chép Raw QR (Dev Test)` và thư viện `expo-clipboard` tại màn hình chi tiết vé để ngăn chặn rò rỉ thông tin ký số ra clipboard.
+- **Tối ưu hóa quy trình soát vé của Staff**:
+  - Loại bỏ hoàn toàn hộp thoại nhập/dán JSON thủ công trên màn hình quét của Staff (`scanner.tsx`), đảm bảo nhân viên chỉ thực hiện soát vé bằng camera trực tiếp hoặc chọn ảnh QR hợp lệ từ album.
+- **Tài liệu hóa dự án**:
+  - Cập nhật chi tiết tài liệu [README.md](file:///C:/Users/LOQ/Documents/ticket-box-mobile-app/README.md) hướng dẫn toàn bộ quy trình thiết lập mạng LAN, máy ảo, điện thoại thật (Development Build/APK) và quy trình test liên thiết bị.
+  - Đồng bộ hóa tài liệu đặc tả hạ tầng [specs.md](file:///C:/Users/LOQ/Documents/ticket-box-mobile-app/specs.md) khớp chính xác 100% với mã nguồn Backend v0.8.4.
+
+---
+
 ### v0.8.7: Màn Hình Thanh Toán Thành Công & Xử Lý Deep Link (2026-07-11)
 
 #### Bổ sung mới
