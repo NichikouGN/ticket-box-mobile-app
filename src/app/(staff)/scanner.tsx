@@ -10,7 +10,7 @@ import { Concert } from '@/types/concert';
 import { CameraView, useCameraPermissions, scanFromURLAsync } from 'expo-camera';
 import { Stack, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, Alert, FlatList, Linking, Pressable, ScrollView, StyleSheet, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, FlatList, Linking, Pressable, ScrollView, StyleSheet, View } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 
 export default function ScannerScreen() {
@@ -23,7 +23,6 @@ export default function ScannerScreen() {
   const [selectedConcert, setSelectedConcert] = useState<{ id: string; title: string } | null>(null);
   
   const [publicKey, setPublicKey] = useState<string>('');
-  const [manualInput, setManualInput] = useState('');
   const [scanning, setScanning] = useState(true);
   const [verifying, setVerifying] = useState(false);
   const [scanResult, setScanResult] = useState<CheckinResult | null>(null);
@@ -191,13 +190,6 @@ export default function ScannerScreen() {
     } finally {
       setVerifying(false);
     }
-  };
-
-  const handleManualSubmit = () => {
-    if (!manualInput.trim()) return;
-    setScanning(false);
-    processQR(manualInput.trim());
-    setManualInput('');
   };
 
   const handleMockScan = () => {
@@ -442,18 +434,6 @@ export default function ScannerScreen() {
             <ThemedText style={styles.mockButtonText}>⚡ Giả lập Quét vé (Mock Scan)</ThemedText>
           </Pressable>
 
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={[styles.textInput, { borderColor: theme.backgroundSelected, backgroundColor: theme.background, color: theme.text }]}
-              placeholder="Dán mã QR raw tại đây để test..."
-              placeholderTextColor="#888"
-              value={manualInput}
-              onChangeText={setManualInput}
-            />
-            <Pressable onPress={handleManualSubmit} style={styles.submitButton}>
-              <ThemedText style={styles.submitButtonText}>Quét</ThemedText>
-            </Pressable>
-          </View>
         </ThemedView>
       )}
     </ThemedView>
